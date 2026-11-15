@@ -56,30 +56,30 @@ const htmlFromScreenshot = `
 </html>
 `;
 
-console.log("=== Lancement du test d'extraction Moodle ===");
+console.log("=== Running Moodle Scraper Test ===");
 
 const dom = new JSDOM(htmlFromScreenshot, { url: "https://moodle.univ.fr/course/view.php?id=42" });
 const result = MoodleScraper.extractDocuments(dom.window.document);
 
-console.log("Cours détecté :", result.courseTitle);
-console.log("Section détectée :", result.activeSection);
-console.log("Nombre total d'éléments trouvés :", result.totalFound);
+console.log("Course detected:", result.courseTitle);
+console.log("Section detected:", result.activeSection);
+console.log("Total items found:", result.totalFound);
 
 assert.strictEqual(result.courseTitle, "Algorithmique avancée et programmation C");
 assert.strictEqual(result.activeSection, "Examens théoriques");
 assert.strictEqual(result.totalFound, 8);
 
 const filenames = result.items.map(i => i.filename);
-console.log("\nFichiers renommés intelligemment :");
+console.log("\nSmartly renamed files:");
 filenames.forEach((fn, idx) => console.log(` [${idx + 1}] ${fn}`));
 
-assert.strictEqual(filenames[0], "Année 2005-2006 - Partiel - Sujet.pdf");
+assert.strictEqual(filenames[0], "Année 2005-2006 - Partiel - Subject.pdf");
 assert.strictEqual(filenames[1], "Année 2005-2006 - Partiel - Correction.pdf");
-assert.strictEqual(filenames[2], "Année 2005-2006 - Examen - Sujet.pdf");
+assert.strictEqual(filenames[2], "Année 2005-2006 - Examen - Subject.pdf");
 assert.strictEqual(filenames[3], "Année 2005-2006 - Examen - Correction.pdf");
-assert.strictEqual(filenames[4], "Année 2006-2007 - Partiel - Sujet.pdf");
+assert.strictEqual(filenames[4], "Année 2006-2007 - Partiel - Subject.pdf");
 assert.strictEqual(filenames[5], "Année 2006-2007 - Partiel - Correction.pdf");
-assert.strictEqual(filenames[6], "Année 2006-2007 - Examen - Sujet.pdf");
+assert.strictEqual(filenames[6], "Année 2006-2007 - Examen - Subject.pdf");
 assert.strictEqual(filenames[7], "Année 2006-2007 - Examen - Correction.pdf");
 
-console.log("\n✅ Tous les tests sont validés avec succès !");
+console.log("\n✅ All unit tests passed successfully!");

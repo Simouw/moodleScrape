@@ -1,9 +1,9 @@
 /**
- * popup.js - Contrôleur de l'interface utilisateur de l'extension
+ * popup.js - Extension UI Controller (English)
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Éléments du DOM
+  // DOM Elements
   const courseNameEl = document.getElementById('course-name');
   const sectionNameEl = document.getElementById('section-name');
   const sectionRowEl = document.getElementById('section-row');
@@ -19,23 +19,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnDownloadChrome = document.getElementById('btn-download-chrome');
   const optSubfolderEl = document.getElementById('opt-subfolder');
   const optAlwaysTabEl = document.getElementById('opt-always-tab');
-  const tabNoticeEl = document.getElementById('tab-notice');
   const progressContainerEl = document.getElementById('progress-container');
   const progressBarFillEl = document.getElementById('progress-bar-fill');
   const progressTextEl = document.getElementById('progress-text');
   const progressPercentEl = document.getElementById('progress-percent');
 
-  // Gestion du mode pleine page / onglet dédié
+  // Full-tab / dedicated tab mode detection
   const urlParams = new URLSearchParams(window.location.search);
   const isFullTab = urlParams.get('tab') === '1';
   const shouldPickFolderImmediately = urlParams.get('pickFolder') === '1';
   const forcedSourceTabId = urlParams.get('sourceTabId') ? parseInt(urlParams.get('sourceTabId'), 10) : null;
 
-  // Charger la préférence "Toujours ouvrir dans un onglet"
+  // Load preferences
   const prefs = await chrome.storage.local.get(['optAlwaysTab', 'optSubfolder']);
   if (prefs.optAlwaysTab) {
     optAlwaysTabEl.checked = true;
-    // Si on est dans le popup volatile et que la préférence est cochée, basculer immédiatement vers l'onglet
     if (!isFullTab) {
       const tab = await getTargetTab();
       chrome.tabs.create({
@@ -63,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnDetachEl) btnDetachEl.style.display = 'none';
   }
 
-  // État local
+  // Local state
   let currentTabId = forcedSourceTabId;
   let courseData = {
     courseTitle: '',
@@ -72,7 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
   let isDownloading = false;
 
-  // Bouton Détacher / Agrandir dans un onglet
+  // Detach / Expand into a full tab
   btnDetachEl.addEventListener('click', async () => {
     await saveTransferState();
     chrome.tabs.create({
@@ -81,21 +79,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.close();
   });
 
-  // Obtenir l'onglet cible (la page Moodle)
+  // Get Moodle target tab
   async function getTargetTab() {
     if (currentTabId) {
       try {
         const tab = await chrome.tabs.get(currentTabId);
         if (tab) return tab;
       } catch (e) {
-        // Tab fermé ou invalide
+        // Tab closed or invalid
       }
     }
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     return tabs[0] || null;
   }
 
-  // Sauvegarder l'état actuel pour le transfert entre popup et onglet
+  // Save state for popup-to-tab transfer
   async function saveTransferState() {
     await chrome.storage.local.set({
       moodleTransferState: {
@@ -106,9 +104,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Initialisation : vérifier s'il y a un état transféré ou scanner la page
+  // Initialization: check transfer state or scan active tab
   async function initialize() {
-    // Si on est en mode onglet et qu'on vient d'un transfert depuis le popup
     if (isFullTab) {
       const saved = await chrome.storage.local.get('moodleTransferState');
       if (saved && saved.moodleTransferState && saved.moodleTransferState.courseData) {
@@ -116,13 +113,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentTabId = saved.moodleTransferState.currentTabId || currentTabId;
         optSubfolderEl.checked = saved.moodleTransferState.optSubfolder ?? true;
 
-        // Nettoyer l'état transféré
         await chrome.storage.local.remove('moodleTransferState');
-
         handleScanSuccess(courseData);
 
         if (shouldPickFolderImmediately) {
-          tabNoticeEl.classList.remove('hidden');
           btnDownloadFolder.scrollIntoView({ behavior: 'smooth' });
           btnDownloadFolder.focus();
         }
@@ -130,11 +124,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // Sinon scan standard
     initScan();
   }
 
-  // Scan de la page Moodle
+  // Scan Moodle page
   async function initScan() {
     loadingStateEl.classList.remove('hidden');
     emptyStateEl.classList.add('hidden');
@@ -142,7 +135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const tab = await getTargetTab();
     if (!tab || !tab.id) {
-      showError("Impossible d'accéder à la page Moodle. Vérifiez que l'onglet du cours est ouvert.");
+      showError("Unable to access Moodle tab. Make sure the course page is open.");
       return;
     }
     currentTabId = tab.id;
@@ -159,21 +152,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => {
               chrome.tabs.sendMessage(currentTabId, { action: 'scanDocuments' }, (resp2) => {
                 if (chrome.runtime.lastError || !resp2 || !resp2.success) {
-                  showError("Impossible d'analyser la page. Vérifiez qu'il s'agit bien d'une page de cours Moodle.");
+                  showError("Unable to scan page. Verify this is a valid Moodle course page.");
                 } else {
                   handleScanSuccess(resp2.data);
                 }
               });
             }, 100);
           } catch (injectErr) {
-            showError("Erreur d'accès à la page : " + injectErr.message);
+            showError("Access error: " + injectErr.message);
           }
         } else {
           handleScanSuccess(response.data);
         }
       });
     } catch (err) {
-      showError("Erreur : " + err.message);
+      showError("Error: " + err.message);
     }
   }
 
@@ -184,12 +177,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (p) p.textContent = msg;
   }
 
-  // Traitement des résultats du scan
+  // Handle scanned results
   function handleScanSuccess(data) {
     loadingStateEl.classList.add('hidden');
     courseData = data;
 
-    courseNameEl.textContent = data.courseTitle || 'Cours Moodle';
+    courseNameEl.textContent = data.courseTitle || 'Moodle Course';
     if (data.activeSection) {
       sectionNameEl.textContent = data.activeSection;
       sectionRowEl.style.display = 'flex';
@@ -207,7 +200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateButtonStates();
   }
 
-  // Rendu de la liste des fichiers
+  // Render file list
   function renderFileList() {
     fileListEl.innerHTML = '';
     const filterText = filterInputEl.value.trim().toLowerCase();
@@ -223,7 +216,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (filteredItems.length === 0) {
       emptyStateEl.classList.remove('hidden');
-      emptyStateEl.querySelector('p').textContent = 'Aucun fichier ne correspond à votre filtre.';
+      emptyStateEl.querySelector('p').textContent = 'No files match your filter.';
     } else {
       emptyStateEl.classList.add('hidden');
     }
@@ -244,11 +237,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateSelectionStats();
       });
 
-      // Contenu
+      // Details container
       const details = document.createElement('div');
       details.className = 'file-details';
 
-      // Badge contextuel
+      // Context Tag
       const ctxRow = document.createElement('div');
       ctxRow.className = 'file-context-row';
 
@@ -260,30 +253,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         ctxRow.appendChild(tag);
       }
 
-      // Champ de renommage éditable
+      // Editable file name input
       const nameInput = document.createElement('input');
       nameInput.type = 'text';
       nameInput.className = 'file-name-input';
       nameInput.value = item.filename;
-      nameInput.title = "Nom du fichier (modifiable directement)";
+      nameInput.title = "Target filename (editable)";
       nameInput.addEventListener('input', (e) => {
         item.filename = e.target.value.trim();
       });
 
-      // Actions & Statut
+      // Actions & Status
       const actionsRow = document.createElement('div');
       actionsRow.className = 'file-actions';
 
       const statusBadge = document.createElement('span');
       statusBadge.className = 'status-badge ready';
       statusBadge.id = `status-${item.id}`;
-      statusBadge.textContent = 'Prêt';
+      statusBadge.textContent = 'Ready';
 
       const linkBtn = document.createElement('a');
       linkBtn.href = item.url;
       linkBtn.target = '_blank';
       linkBtn.className = 'link-btn';
-      linkBtn.title = "Ouvrir le lien original";
+      linkBtn.title = "Open original link";
       linkBtn.innerHTML = `
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
@@ -308,7 +301,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateSelectionStats();
   }
 
-  // Filtres et sélection globale
+  // Filters & selection toggles
   filterInputEl.addEventListener('input', () => {
     renderFileList();
   });
@@ -327,7 +320,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const selectedCount = courseData.items.filter(i => i.selected).length;
     const totalCount = courseData.items.length;
 
-    selectionCountEl.textContent = `Sélection (${selectedCount}/${totalCount})`;
+    selectionCountEl.textContent = `Selection (${selectedCount}/${totalCount})`;
     checkAllEl.checked = selectedCount > 0 && selectedCount === totalCount;
     checkAllEl.indeterminate = selectedCount > 0 && selectedCount < totalCount;
 
@@ -341,11 +334,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnDownloadFolder.disabled = disabled;
     btnDownloadChrome.disabled = disabled;
 
-    btnDownloadFolder.querySelector('span').textContent = `📁 Choisir un dossier & Télécharger (${selectedCount})`;
-    btnDownloadChrome.querySelector('span').textContent = `Téléchargements Chrome direct (${selectedCount})`;
+    btnDownloadFolder.querySelector('span').textContent = `Choose Folder & Download (${selectedCount})`;
+    btnDownloadChrome.querySelector('span').textContent = `Direct Chrome Downloads (${selectedCount})`;
   }
 
-  // Récupération d'un fichier (Blob) avec cookies de session
+  // Fetch file Blob using session cookies
   async function fetchFileBlob(url) {
     try {
       const res = await fetch(url, { credentials: 'include', redirect: 'follow' });
@@ -368,16 +361,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // =========================================================================
-  // OPTION A : Téléchargement avec choix de dossier (File System Access API)
+  // OPTION A: File System Access API (Local Folder Picker)
   // =========================================================================
   btnDownloadFolder.addEventListener('click', async () => {
     const selectedItems = courseData.items.filter(i => i.selected);
     if (selectedItems.length === 0) return;
 
-    // RÈGLE CHROMIUM IMPORTANTE :
-    // Sous Linux et Windows, ouvrir le sélecteur de fichiers OS depuis une petite bulle popup
-    // fait perdre le focus à la bulle, ce qui provoque la fermeture immédiate de la popup par Chrome.
-    // Solution : Si on est dans la popup, on transfère l'état et on ouvre l'onglet dédié où la boîte ne se fermera JAMAIS.
+    // Chromium popup behavior on Linux/Windows:
+    // Opening native file chooser from popup causes popup to blur and close immediately.
+    // Solution: If in popup, seamlessly transfer state to a dedicated tab where picker never closes.
     if (!isFullTab) {
       await saveTransferState();
       chrome.tabs.create({
@@ -387,11 +379,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // Nous sommes dans un onglet dédié sécurisé : l'OS picker peut s'ouvrir sereinement
-    tabNoticeEl.classList.add('hidden');
-
     if (!('showDirectoryPicker' in window)) {
-      alert("Votre navigateur ne supporte pas l'API File System Access. Utilisez le bouton Téléchargements Chrome.");
+      alert("Your browser does not support the File System Access API. Please use Direct Chrome Downloads.");
       return;
     }
 
@@ -400,14 +389,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       rootDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
     } catch (err) {
       if (err.name === 'AbortError') {
-        // Choix annulé par l'utilisateur
-        return;
+        return; // User cancelled
       }
-      alert("Erreur d'accès au dossier : " + err.message);
+      alert("Error accessing selected folder: " + err.message);
       return;
     }
 
-    // Gestion du sous-dossier éventuel
+    // Subfolder handling
     let targetDirHandle = rootDirHandle;
     if (optSubfolderEl.checked) {
       const folderNameParts = [];
@@ -419,12 +407,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         targetDirHandle = await rootDirHandle.getDirectoryHandle(subDirName, { create: true });
       } catch (subErr) {
-        console.warn("Sous-dossier non créé, écriture à la racine :", subErr);
+        console.warn("Could not create subfolder, saving to root folder instead:", subErr);
         targetDirHandle = rootDirHandle;
       }
     }
 
-    // Téléchargement et écriture directe dans le dossier
+    // Batch download
     startBatchDownload(selectedItems, async (item) => {
       const blob = await fetchFileBlob(item.url);
       const cleanName = MoodleScraper.sanitizeFilename(item.filename) || item.defaultFilename;
@@ -436,7 +424,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // =========================================================================
-  // OPTION B : Téléchargement direct sans boîte de dialogue (chrome.downloads)
+  // OPTION B: Direct Chrome Downloads (chrome.downloads API)
   // =========================================================================
   btnDownloadChrome.addEventListener('click', async () => {
     const selectedItems = courseData.items.filter(i => i.selected);
@@ -460,7 +448,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           filename: fullPath
         }, (res) => {
           if (chrome.runtime.lastError || !res || !res.success) {
-            reject(new Error(res?.error || chrome.runtime.lastError?.message || 'Erreur download'));
+            reject(new Error(res?.error || chrome.runtime.lastError?.message || 'Download error'));
           } else {
             resolve();
           }
@@ -469,7 +457,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // Gestionnaire de téléchargement par lot avec barre de progression
+  // Batch download runner with live progress bar
   async function startBatchDownload(itemsToDownload, downloadFunction) {
     isDownloading = true;
     updateButtonStates();
@@ -485,10 +473,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (statusBadge) {
         statusBadge.className = 'status-badge downloading';
-        statusBadge.textContent = 'Téléchargement...';
+        statusBadge.textContent = 'Downloading...';
       }
 
-      progressTextEl.textContent = `Téléchargement ${i + 1}/${total} : ${item.filename}`;
+      progressTextEl.textContent = `Downloading ${i + 1}/${total}: ${item.filename}`;
       const percent = Math.round(((i) / total) * 100);
       progressBarFillEl.style.width = `${percent}%`;
       progressPercentEl.textContent = `${percent}%`;
@@ -498,14 +486,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         completed++;
         if (statusBadge) {
           statusBadge.className = 'status-badge success';
-          statusBadge.textContent = '✓ Enregistré';
+          statusBadge.textContent = '✓ Saved';
         }
       } catch (err) {
-        console.error(`Échec pour ${item.filename} :`, err);
+        console.error(`Failed for ${item.filename}:`, err);
         errors++;
         if (statusBadge) {
           statusBadge.className = 'status-badge error';
-          statusBadge.textContent = '✗ Erreur';
+          statusBadge.textContent = '✗ Error';
           statusBadge.title = err.message;
         }
       }
@@ -519,12 +507,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateButtonStates();
 
     if (errors === 0) {
-      progressTextEl.textContent = `🎉 Terminé ! ${completed} fichier(s) enregistré(s) avec succès.`;
+      progressTextEl.textContent = `Completed! ${completed} file(s) saved successfully.`;
     } else {
-      progressTextEl.textContent = `⚠️ Terminé avec ${completed} succès et ${errors} erreur(s).`;
+      progressTextEl.textContent = `Finished with ${completed} succeeded and ${errors} error(s).`;
     }
   }
 
-  // Démarrage
+  // Start initialization
   initialize();
 });

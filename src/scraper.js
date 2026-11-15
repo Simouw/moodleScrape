@@ -1,7 +1,7 @@
 /**
- * scraper.js - Extracteur intelligent de documents Moodle
- * Analyse le DOM de la page active pour identifier les documents
- * et générer des noms de fichiers cohérents et exploitables.
+ * scraper.js - Intelligent Moodle Document Extractor
+ * Parses active DOM to detect files, resources, and generates
+ * meaningful, structured filenames based on contextual semantics.
  */
 
 (function (root, factory) {
@@ -12,7 +12,7 @@
   }
 })(typeof self !== 'undefined' ? self : this, function () {
 
-  // Nettoyage des caractères interdits dans les noms de fichiers OS
+  // Sanitize filename to comply with OS filesystem rules
   function sanitizeFilename(name) {
     if (!name) return '';
     let clean = name.replace(/[\\/*?:"<>|]/g, '_');
@@ -21,13 +21,13 @@
     return clean;
   }
 
-  // Nettoyer le texte d'un noeud ou fragment
+  // Clean raw node text
   function cleanText(text) {
     if (!text) return '';
     return text.replace(/[\s\u00A0]+/g, ' ').replace(/[:\s]+$/, '').trim();
   }
 
-  // Détecte l'extension probable
+  // Detect file extension
   function detectExtension(url, text) {
     const match = url.match(/\.([a-zA-Z0-9]{2,5})(?:[?#]|$)/i);
     if (match) {
@@ -50,13 +50,14 @@
     return '.pdf';
   }
 
-  // Détermine si un lien correspond à une ressource téléchargeable
+  // Check if link represents a downloadable document/resource
   function isDownloadableResource(anchor) {
     const href = anchor.getAttribute('href') || '';
     if (!href || href.startsWith('#') || href.startsWith('javascript:')) {
       return false;
     }
 
+    // Common Moodle resource endpoints
     if (href.includes('/mod/resource/view.php') ||
         href.includes('/pluginfile.php/') ||
         href.includes('/mod/folder/') ||
@@ -65,17 +66,20 @@
       return true;
     }
 
+    // Direct file extensions
     if (/\.(pdf|zip|tar|gz|tgz|rar|7z|docx?|xlsx?|pptx?|odt|ods|odp|txt|c|cpp|h|py|java|sh|csv|ipynb)(?:[?#]|$)/i.test(href)) {
       return true;
     }
 
+    // Text indicating a document
     const text = anchor.textContent || '';
-    if (/\b(fichier|document|télécharger|download|pdf)\b/i.test(text)) {
+    if (/\b(fichier|document|télécharger|download|pdf|file)\b/i.test(text)) {
       if (!href.includes('/user/') && !href.includes('/course/view.php') && !href.includes('/login/')) {
         return true;
       }
     }
 
+    // Presence of file icon
     const icon = anchor.querySelector('img[src*="pdf"], img[alt*="PDF"], img[alt*="Fichier"], .fa-file-pdf, .fa-file-archive, .fa-file');
     if (icon) {
       return true;
@@ -84,7 +88,7 @@
     return false;
   }
 
-  // Récupère le titre du cours Moodle
+  // Extract course title from header or breadcrumbs
   function getCourseTitle(doc) {
     const selectors = [
       '#page-header h1',
@@ -99,15 +103,15 @@
       const el = doc.querySelector(sel);
       if (el && el.textContent.trim()) {
         let title = el.textContent.trim();
-        title = title.replace(/^Cours\s*:\s*/i, '');
+        title = title.replace(/^(Cours|Course)\s*:\s*/i, '');
         title = title.split('|')[0].trim();
         if (title) return cleanText(title);
       }
     }
-    return 'Cours_Moodle';
+    return 'Moodle_Course';
   }
 
-  // Récupère la section ou l'onglet actif
+  // Extract active section or tab
   function getActiveSection(doc) {
     const activeTab = doc.querySelector(
       '.nav-tabs .active, .nav-pills .active, .tabtree .active, .onetopic .nav-link.active, button.btn.active, .section.active h3'
@@ -129,7 +133,7 @@
     return '';
   }
 
-  // Récupère les ancêtres pertinents (ex: "Année 2005-2006 :")
+  // Get ancestor list context (e.g. "Année 2005-2006" or "Year 2020-2021")
   function getAncestorListContext(anchor) {
     const ancestors = [];
     let parentLi = anchor.closest('li');
@@ -160,7 +164,7 @@
     return ancestors;
   }
 
-  // Analyse la ligne ou le parent immédiat du lien
+  // Analyze line context around the anchor
   function analyzeLineContext(anchor) {
     let prevText = '';
     let node = anchor.previousSibling;
@@ -168,9 +172,7 @@
       if (node.nodeType === 3) {
         prevText = node.textContent + ' ' + prevText;
       } else if (node.nodeType === 1) {
-        if (node.tagName === 'A') {
-          break;
-        }
+        if (node.tagName === 'A') break;
         prevText = (node.textContent || '') + ' ' + prevText;
       }
       node = node.previousSibling;
@@ -207,12 +209,12 @@
     let role = '';
     const prevLower = prevText.toLowerCase();
 
-    if (/\b(correction|corrigé|corriges?|solution|solutions|reponses?|réponses?)\b/i.test(prevLower)) {
+    if (/\b(correction|corrigé|corriges?|solution|solutions|answers?|reponses?|réponses?)\b/i.test(prevLower)) {
       role = 'Correction';
-    } else if (/\b(sujet|énoncé|enonce)\b/i.test(prevLower)) {
-      role = 'Sujet';
+    } else if (/\b(sujet|énoncé|enonce|subject|problem|statement)\b/i.test(prevLower)) {
+      role = 'Subject';
     } else if (isMultiLinkContainer && containerHasCorrection) {
-      role = 'Sujet';
+      role = 'Subject';
     } else {
       if (/^\s*\(\s*(correction|corrigé|solution)\s*\)/i.test(nextText)) {
         role = 'Correction';
@@ -220,7 +222,7 @@
     }
 
     let itemType = '';
-    const typeRegex = /\b(Partiel|Examen|Rattrapage|Session\s*\d+|TP\s*\d*|TD\s*\d*|Devoir|Projet|Contrôle\s*continu|CC\s*\d*|Quizz?)\b/i;
+    const typeRegex = /\b(Partiel|Examen|Exam|Midterm|Final|Rattrapage|Session\s*\d+|TP\s*\d*|TD\s*\d*|Lab\s*\d*|Homework|Assignment|Devoir|Projet|Project|Quiz)\b/i;
 
     let match = prevText.match(typeRegex);
     if (match) {
@@ -240,7 +242,7 @@
     };
   }
 
-  // Détection du nom pour une activité Moodle standard
+  // Get name for standard Moodle activity instance
   function getMoodleActivityName(anchor) {
     const activity = anchor.closest('.activity, .activityinstance');
     if (!activity) return null;
@@ -255,7 +257,7 @@
     return null;
   }
 
-  // Fonction principale d'extraction
+  // Main extraction function
   function extractDocuments(doc) {
     const courseTitle = getCourseTitle(doc);
     const activeSection = getActiveSection(doc);
@@ -278,15 +280,15 @@
       const parts = [];
       let contextPath = '';
 
-      // 1. Vérifier d'abord si c'est une activité Moodle standard avec nom explicite
+      // 1. Check for standard Moodle activity instance with explicit title
       const activityName = getMoodleActivityName(anchor);
-      const isActivityGeneric = !activityName || /^(fichier\s*pdf|pdf|document|télécharger|download|lien)$/i.test(activityName);
+      const isActivityGeneric = !activityName || /^(fichier\s*pdf|pdf|document|file|download|télécharger|lien)$/i.test(activityName);
 
       if (activityName && !isActivityGeneric) {
         parts.push(sanitizeFilename(activityName));
         contextPath = activityName;
       } else {
-        // 2. Contexte hiérarchique (listes, années, examens, etc.)
+        // 2. Hierarchical list context
         const ancestors = getAncestorListContext(anchor);
         ancestors.forEach(a => parts.push(sanitizeFilename(a)));
 
@@ -301,15 +303,15 @@
         contextPath = ancestors.join(' > ') + (lineCtx.itemType ? ` > ${lineCtx.itemType}` : '') + (lineCtx.role ? ` (${lineCtx.role})` : '');
       }
 
-      // 3. Repli sur le texte du lien si non générique
+      // 3. Fallback to anchor text
       if (parts.length === 0) {
-        const isGeneric = /^(fichier\s*pdf|pdf|document|télécharger|download|lien|ici|cliquez)$/i.test(anchorRawText);
+        const isGeneric = /^(fichier\s*pdf|pdf|document|file|download|télécharger|lien|here|link)$/i.test(anchorRawText);
         if (anchorRawText && !isGeneric) {
           parts.push(sanitizeFilename(anchorRawText));
         }
       }
 
-      // 4. Repli sur le chemin de l'URL
+      // 4. Fallback to URL path segment
       if (parts.length === 0) {
         try {
           const pathname = new URL(href, doc.baseURI).pathname;
@@ -320,23 +322,22 @@
             parts.push(sanitizeFilename(cleanSeg));
           }
         } catch (e) {
-          // ignore url parse error
+          // ignore url error
         }
       }
 
-      // 5. Repli ultime
+      // 5. Ultimate fallback
       if (parts.length === 0) {
         parts.push(`Document_${index + 1}`);
       }
 
-      // Assembler le nom de base
       let baseName = parts.join(' - ');
       baseName = sanitizeFilename(baseName);
       if (!baseName) baseName = `Document_${index + 1}`;
 
       let finalFilename = baseName + ext;
 
-      // Gestion des doublons de nom
+      // Handle duplicate filenames
       if (usedFilenames.has(finalFilename)) {
         const count = usedFilenames.get(finalFilename) + 1;
         usedFilenames.set(finalFilename, count);
@@ -351,7 +352,7 @@
         filename: finalFilename,
         defaultFilename: finalFilename,
         extension: ext,
-        originalText: anchorRawText || 'Lien',
+        originalText: anchorRawText || 'Link',
         contextPath: contextPath || baseName,
         selected: true
       });

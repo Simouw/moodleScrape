@@ -1,12 +1,12 @@
 /**
- * background.js - Service Worker Manifest V3
+ * background.js - Manifest V3 Service Worker
  */
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('[MoodleSmartDownloader] Extension installée avec succès.');
+  console.log('[MoodleSmartDownloader] Extension successfully installed.');
 });
 
-// Écoute des requêtes globales si nécessaire
+// Download handler fallback for chrome.downloads
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'downloadViaChrome') {
     chrome.downloads.download({

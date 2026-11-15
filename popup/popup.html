@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +8,7 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- En-tête -->
+    <!-- Header -->
     <header class="app-header">
       <div class="header-brand">
         <img src="../icons/icon32.png" alt="Logo" class="logo">
@@ -18,100 +18,91 @@
         </div>
       </div>
       <div class="header-actions">
-        <button id="btn-detach" class="icon-btn" title="Ouvrir dans un onglet dédié (recommandé pour éviter toute fermeture inopinée)">
+        <button id="btn-detach" class="icon-btn" title="Open in a dedicated tab (recommended for large file lists)">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          <span class="btn-text-detach">Agrandir / Détacher</span>
+          <span class="btn-text-detach">Expand / Detach</span>
         </button>
       </div>
     </header>
 
-    <!-- Bannière d'aide / Notice pour le sélecteur de dossier -->
-    <div id="tab-notice" class="tab-notice hidden">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-      <div>
-        <strong>Prêt pour l'enregistrement :</strong>
-        <span>Cliquez sur le bouton ci-dessous pour sélectionner votre dossier local. Cet onglet ne se fermera pas !</span>
-      </div>
-    </div>
-
-    <!-- Informations du Cours & Section -->
+    <!-- Course & Section Metadata -->
     <section class="course-meta-box">
       <div class="meta-row">
-        <span class="meta-label">Cours :</span>
-        <span id="course-name" class="meta-value">Détection en cours...</span>
+        <span class="meta-label">Course:</span>
+        <span id="course-name" class="meta-value">Detecting...</span>
       </div>
       <div class="meta-row" id="section-row">
-        <span class="meta-label">Section :</span>
-        <span id="section-name" class="meta-badge">Section courante</span>
+        <span class="meta-label">Section:</span>
+        <span id="section-name" class="meta-badge">Current Section</span>
       </div>
     </section>
 
-    <!-- Barre d'outils et de filtres -->
+    <!-- Toolbar and Search Filter -->
     <section class="toolbar">
       <div class="toolbar-left">
         <label class="checkbox-container">
           <input type="checkbox" id="check-all" checked>
           <span class="checkmark"></span>
-          <span id="selection-count">Tous (0)</span>
+          <span id="selection-count">All (0)</span>
         </label>
       </div>
       <div class="toolbar-right">
-        <input type="text" id="filter-input" placeholder="Filtrer (ex: 2008, Partiel)..." class="search-input">
-        <button id="btn-refresh" class="icon-btn" title="Réanalyser la page">
+        <input type="text" id="filter-input" placeholder="Filter (e.g. 2008, Midterm)..." class="search-input">
+        <button id="btn-refresh" class="icon-btn" title="Rescan page">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
         </button>
       </div>
     </section>
 
-    <!-- Zone principale : Liste des fichiers détectés -->
+    <!-- Main Section: Detected Files List -->
     <main class="file-list-container">
       <div id="loading-state" class="state-message">
         <div class="spinner"></div>
-        <p>Analyse de la page Moodle...</p>
+        <p>Scanning Moodle page...</p>
       </div>
 
       <div id="empty-state" class="state-message hidden">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-        <p>Aucun document détecté sur cette page.</p>
-        <span class="state-sub">Vérifiez que vous êtes bien sur un cours Moodle avec des fichiers visibles.</span>
+        <p>No downloadable documents found on this page.</p>
+        <span class="state-sub">Make sure you are on a Moodle course page with visible documents.</span>
       </div>
 
       <div id="file-list" class="file-list"></div>
     </main>
 
-    <!-- Options & Paramètres -->
+    <!-- Options & Settings -->
     <section class="options-box">
       <label class="toggle-option">
         <input type="checkbox" id="opt-subfolder" checked>
-        <span>Créer un sous-dossier par Cours / Section</span>
+        <span>Create subfolder per Course / Section</span>
       </label>
       <label class="toggle-option">
         <input type="checkbox" id="opt-always-tab">
-        <span>Toujours ouvrir directement dans un onglet dédié</span>
+        <span>Always open directly in a dedicated tab</span>
       </label>
     </section>
 
-    <!-- Barre de statut & progression -->
+    <!-- Progress Status Bar -->
     <div id="progress-container" class="progress-container hidden">
       <div class="progress-bar-bg">
         <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
       </div>
       <div class="progress-info">
-        <span id="progress-text">En attente...</span>
+        <span id="progress-text">Waiting...</span>
         <span id="progress-percent">0%</span>
       </div>
     </div>
 
-    <!-- Pied de page avec boutons d'action -->
+    <!-- Footer Actions -->
     <footer class="app-footer">
       <button id="btn-download-folder" class="btn btn-primary">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-        <span>📁 Choisir un dossier & Télécharger</span>
+        <span>Choose Folder & Download</span>
       </button>
 
-      <button id="btn-download-chrome" class="btn btn-secondary" title="Télécharger dans le dossier Téléchargements par défaut de votre navigateur sans ouvrir de boîte de dialogue">
+      <button id="btn-download-chrome" class="btn btn-secondary" title="Save directly into default Chrome Downloads folder without folder picker">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-        <span>Téléchargements Chrome direct</span>
+        <span>Direct Chrome Downloads</span>
       </button>
     </footer>
   </div>

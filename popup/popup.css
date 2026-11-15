@@ -1,4 +1,4 @@
-/* popup.css - Styles modernes et soignés pour Moodle Smart Downloader */
+/* popup.css - Clean, modern styles for Moodle Smart Downloader */
 
 :root {
   --primary-color: #f27217;       /* Moodle Orange */
@@ -41,7 +41,7 @@ body {
   flex-direction: column;
 }
 
-/* Mode détachable en plein onglet */
+/* Full tab dedicated mode */
 body.full-tab {
   width: 100vw;
   height: 100vh;
@@ -67,7 +67,7 @@ body.full-tab .app-container {
   overflow: hidden;
 }
 
-/* En-tête */
+/* Header */
 .app-header {
   display: flex;
   align-items: center;
@@ -125,31 +125,7 @@ body.full-tab .app-container {
   border-color: #cbd5e1;
 }
 
-/* Bannière d'aide / Notice */
-.tab-notice {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
-  background-color: #eff6ff;
-  border-bottom: 1px solid #bfdbfe;
-  color: #1e40af;
-  font-size: 12px;
-  line-height: 1.4;
-  animation: slideDown 0.2s ease-out;
-}
-
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.tab-notice div {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Métadonnées du cours */
+/* Course metadata */
 .course-meta-box {
   padding: 10px 16px;
   background-color: #f8fafc;
@@ -196,7 +172,7 @@ body.full-tab .app-container {
   max-width: 400px;
 }
 
-/* Barre d'outils */
+/* Toolbar */
 .toolbar {
   display: flex;
   align-items: center;
@@ -254,7 +230,7 @@ body.full-tab .app-container {
   accent-color: var(--primary-color);
 }
 
-/* Liste des fichiers */
+/* File list */
 .file-list-container {
   flex: 1;
   overflow-y: auto;
@@ -295,7 +271,7 @@ body.full-tab .app-container {
   display: none !important;
 }
 
-/* Fiches fichiers */
+/* File cards */
 .file-list {
   display: flex;
   flex-direction: column;
@@ -454,7 +430,7 @@ body.full-tab .app-container {
   accent-color: var(--primary-color);
 }
 
-/* Barre de progression */
+/* Progress bar */
 .progress-container {
   padding: 8px 16px;
   background-color: #fffaf0;

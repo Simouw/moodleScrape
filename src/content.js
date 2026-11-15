@@ -1,27 +1,26 @@
 /**
- * content.js - Script de contenu injecté dans la page Moodle
- * Écoute les requêtes du popup et exécute le scraper dans le contexte de la page.
+ * content.js - Injected content script for Moodle pages
+ * Listens for requests from popup and runs scraper in the page context.
  */
 
-// Écoute des messages venant du popup ou du background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'scanDocuments') {
     try {
       if (typeof MoodleScraper === 'undefined') {
-        sendResponse({ success: false, error: 'MoodleScraper non chargé' });
+        sendResponse({ success: false, error: 'MoodleScraper not loaded' });
         return true;
       }
 
       const results = MoodleScraper.extractDocuments(document);
       sendResponse({ success: true, data: results });
     } catch (err) {
-      console.error('[MoodleSmartDownloader] Erreur lors de l\'extraction :', err);
+      console.error('[MoodleSmartDownloader] Error during extraction:', err);
       sendResponse({ success: false, error: err.message });
     }
-    return true; // Asynchrone
+    return true; // Async response
   }
 
-  // Téléchargement d'un fichier via fetch avec cookies de session de la page
+  // Fetch file Blob using page session credentials
   if (request.action === 'fetchBlob') {
     fetch(request.url, {
       credentials: 'include',
@@ -29,11 +28,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     })
       .then(async (response) => {
         if (!response.ok) {
-          throw new Error(`Erreur HTTP ${response.status} : ${response.statusText}`);
+          throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
         }
         const blob = await response.blob();
-        
-        // Lire sous forme de DataURL pour le transmettre via chrome.runtime
+
         const reader = new FileReader();
         reader.onloadend = () => {
           sendResponse({
@@ -44,15 +42,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           });
         };
         reader.onerror = () => {
-          sendResponse({ success: false, error: 'Échec de conversion du Blob' });
+          sendResponse({ success: false, error: 'Failed to convert Blob to DataURL' });
         };
         reader.readAsDataURL(blob);
       })
       .catch((err) => {
-        console.error('[MoodleSmartDownloader] Échec du fetch :', err);
+        console.error('[MoodleSmartDownloader] Fetch failed:', err);
         sendResponse({ success: false, error: err.message });
       });
 
-    return true; // Asynchrone
+    return true; // Async response
   }
 });
