@@ -1,31 +1,28 @@
 # 🎓 Moodle Smart Downloader
 
-> A modern browser extension (Chrome, Edge, Brave, Chromium) for intelligent detection, contextual renaming, and bulk downloading of documents on Moodle course pages.
+> A high-performance browser extension for intelligent detection, multi-level section hierarchy extraction, sub-page crawling, contextual renaming, and in-page direct downloads on Moodle.
 
 ---
 
-## 🌟 The Problem It Solves
+## 🌟 Key Features
 
-On many Moodle course pages, professors list dozens of documents where every link has the exact same generic text: **"Fichier PDF"**, or points to obscure resource IDs (`view.php?id=1234`). Downloading them with default browser tools results in an unorganized mess of `Fichier PDF (1).pdf`, `Fichier PDF (2).pdf`, etc.
-
-**Moodle Smart Downloader** inspects the DOM hierarchy surrounding each link (course name, active tab/section, ancestor list items, year labels, sibling prefixes) and reconstructs clean, human-readable filenames:
-
-* `2005-2006 - Midterm - Subject.pdf`
-* `2005-2006 - Midterm - Correction.pdf`
-* `2005-2006 - Exam - Subject.pdf`
-* `2005-2006 - Exam - Correction.pdf`
-
----
-
-## 🚀 Key Features
-
-* **🧠 Smart Contextual Renaming:** Automatically infers course titles, section names, exam categories, years, and subject vs. correction roles.
-* **📁 Native Local Folder Selection (File System Access API):** Select any directory anywhere on your computer (e.g. `~/Documents/University/Algorithms`), and stream files directly into it.
-* **🛡️ Chromium Popup Auto-Dismiss Fix:** Seamlessly transitions into a dedicated browser tab when picking folders, preventing the browser from prematurely closing the interface when the native OS file chooser appears.
-* **✏️ In-Place Inline Renaming:** Every suggested filename can be edited directly inside the list before downloading.
-* **🔍 Instant Search & Selective Download:** Select/deselect all with one click, or filter files in real time (e.g. `2015`, `Exam`, `Correction`).
-* **🔐 Zero-Credential Session Handling:** Runs within your authenticated Moodle tab context, inheriting session cookies automatically—no passwords or API tokens required.
-* **⚡ Live Progress Tracking:** Visual status badges per file (`Ready`, `Downloading...`, `✓ Saved`, `✗ Error`) and an overall progress bar.
+* **🖥️ Seamless In-Page Drawer (No New Tab Required):**
+  Click the toolbar icon on any Moodle course page to toggle an elegant in-page drawer. Clicking **"Choose Folder & Download"** opens your native OS folder chooser directly over the Moodle tab—**zero new browser tabs are opened, and the window never closes unexpectedly!**
+* **📂 Multi-Level Section & Tab Hierarchy:**
+  Properly resolves full section paths across tabs, sub-tabs, and breadcrumbs:
+  * `Cours / LaTeX et Git/GitLab`
+  * `Travaux pratiques / TP5`
+  * `Travaux dirigés`
+* **🕸️ Automatic Sub-Page Crawling (e.g. GCC-DDD):**
+  When a section links to Moodle activity sub-pages (such as `/mod/page/`, `/mod/folder/`, or assignments like `GCC-DDD`), the extension automatically fetches and extracts the embedded files (PDFs, `.tar.gz`, `.zip`, etc.) inside them and prefixes their names cleanly (e.g. `GCC-DDD - Sujet détaillé.pdf`, `GCC-DDD - Jeu du snake.tar.gz`).
+* **🧠 Smart Contextual Renaming:**
+  Transforms generic labels like *"Fichier PDF"* into descriptive, structured filenames based on ancestor headings, exam years, and subject vs. correction roles.
+* **📁 Native Local Folder Selection (File System Access API):**
+  Pick any folder on your machine and stream files directly into it.
+* **✏️ Inline Renaming & Filtering:**
+  Every file name is fully editable directly inside the list before downloading. Filter files in real time (e.g. `2015`, `TP1`, `Exam`).
+* **🔐 Zero-Credential Session Handling:**
+  Runs within your active authenticated session cookies using `credentials: 'include'`.
 
 ---
 
@@ -42,19 +39,20 @@ On many Moodle course pages, professors list dozens of documents where every lin
    ```bash
    /home/cmo/code/moodleScrape
    ```
-5. The **Moodle Smart Downloader** icon will appear in your extensions toolbar. Pin it for quick access!
+5. Pin **Moodle Smart Downloader** to your extensions bar!
 
 ---
 
 ## 🛠️ Usage Walkthrough
 
-1. Navigate to your logged-in Moodle course page and open any section containing documents.
-2. Click the extension icon in your browser toolbar.
-3. Review the detected course title, active section, and parsed files.
-4. Customize selections or edit filenames if desired.
-5. Click **"Choose Folder & Download"**:
-   * Pick your destination folder in your native OS directory picker.
-   * Watch files download with real-time status and progress indicators!
+1. Go to any Moodle course section where you are logged in.
+2. Click the extension icon in your browser toolbar:
+   * The drawer smoothly slides in right on the Moodle page.
+   * It scans the active section, discovers sub-tabs, and crawls linked sub-pages (e.g. `GCC-DDD`).
+3. Customize file selections or tweak any filename if needed.
+4. Click **"Choose Folder & Download"**:
+   * Pick your target folder in your OS file dialog.
+   * Files download with real-time progress indicators right on your screen without leaving the page!
 
 ---
 
@@ -64,21 +62,18 @@ On many Moodle course pages, professors list dozens of documents where every lin
 moodleScrape/
 ├── manifest.json            # Manifest V3 extension configuration
 ├── icons/                   # High-res extension icons (16, 32, 48, 128px)
-│   ├── icon16.png
-│   ├── icon32.png
-│   ├── icon48.png
-│   └── icon128.png
 ├── src/
-│   ├── scraper.js           # Core DOM extraction and smart renaming logic
-│   ├── content.js           # Content script injected into Moodle pages
-│   └── background.js        # Background service worker (downloads fallback)
+│   ├── scraper.js           # DOM hierarchy, multi-level tabs & sub-page crawler
+│   ├── content.js           # In-page slide-out drawer (Shadow DOM) & page bridge
+│   └── background.js        # Action click handler & Chrome downloads fallback
 ├── popup/
-│   ├── popup.html           # Modern user interface
-│   ├── popup.css            # Responsive styles and typography
-│   └── popup.js             # UI controller & File System Access handler
+│   ├── popup.html           # Standalone popup interface (fallback)
+│   ├── popup.css            # Extension styling
+│   └── popup.js             # Standalone UI controller
 ├── test/
-│   ├── test_scraper.js      # Unit tests based on real Moodle course layouts
-│   └── test_other_formats.js# Unit tests for standard Moodle activities
+│   ├── test_scraper.js      # Unit tests for exam archive pages
+│   ├── test_other_formats.js# Unit tests for standard activity items
+│   └── test_hierarchy.js    # Unit tests for multi-level tabs & sub-page crawling
 └── README.md
 ```
 
@@ -86,14 +81,15 @@ moodleScrape/
 
 ## 🧪 Running Automated Tests
 
-Run the test suite using Node.js:
+Run the full test suite with Node.js:
 ```bash
 node test/test_scraper.js
 node test/test_other_formats.js
+node test/test_hierarchy.js
 ```
 
 ---
 
 ## 📄 License
 
-MIT License. Feel free to use, modify, and distribute.
+MIT License.

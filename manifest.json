@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Moodle Smart Downloader",
-  "version": "1.0.0",
-  "description": "Intelligent detection, contextual renaming, and bulk downloading of Moodle documents with custom folder selection.",
+  "version": "1.1.0",
+  "description": "Intelligent detection, multi-level section hierarchy, sub-page crawling, and in-page direct downloads for Moodle.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -10,7 +10,6 @@
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

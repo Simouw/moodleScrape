@@ -1,7 +1,7 @@
 /**
- * scraper.js - Intelligent Moodle Document Extractor
- * Parses active DOM to detect files, resources, and generates
- * meaningful, structured filenames based on contextual semantics.
+ * scraper.js - Intelligent Moodle Document Extractor & Sub-Page Crawler
+ * Parses DOM hierarchy, active multi-level sections/tabs, and crawls linked
+ * sub-pages (e.g. GCC-DDD) to discover embedded files.
  */
 
 (function (root, factory) {
@@ -21,15 +21,31 @@
     return clean;
   }
 
-  // Clean raw node text
-  function cleanText(text) {
-    if (!text) return '';
-    return text.replace(/[\s\u00A0]+/g, ' ').replace(/[:\s]+$/, '').trim();
+  // Strip extension safely (handling compound extensions like .tar.gz)
+  function stripExtension(filename) {
+    if (!filename) return '';
+    return filename.replace(/(\.tar\.(gz|bz2|xz)|\.[a-zA-Z0-9]{2,5})$/i, '');
   }
 
-  // Detect file extension
+  // Clean raw node text and strip navigation/dropdown glyphs
+  function cleanText(text) {
+    if (!text) return '';
+    let t = text.replace(/[\s\u00A0]+/g, ' ').replace(/[:\s]+$/, '').trim();
+    t = t.replace(/^[v▼▾►▸◄\s|]+/, '').replace(/[v▼▾►▸◄\s|]+$/, '').trim();
+    return t;
+  }
+
+  // Detect file extension (including compound extensions like .tar.gz)
   function detectExtension(url, text) {
-    const match = url.match(/\.([a-zA-Z0-9]{2,5})(?:[?#]|$)/i);
+    const rawUrl = url || '';
+    const lowerUrl = rawUrl.toLowerCase();
+    const lowerText = (text || '').toLowerCase();
+
+    if (lowerUrl.includes('.tar.gz') || lowerText.includes('.tar.gz')) return '.tar.gz';
+    if (lowerUrl.includes('.tar.bz2') || lowerText.includes('.tar.bz2')) return '.tar.bz2';
+    if (lowerUrl.includes('.tar.xz') || lowerText.includes('.tar.xz')) return '.tar.xz';
+
+    const match = rawUrl.match(/\.([a-zA-Z0-9]{2,5})(?:[?#]|$)/i);
     if (match) {
       const ext = match[1].toLowerCase();
       if (!['php', 'html', 'htm', 'asp', 'aspx', 'jsp'].includes(ext)) {
@@ -37,12 +53,12 @@
       }
     }
 
-    const lowerText = (text || '').toLowerCase();
     if (lowerText.includes('pdf')) return '.pdf';
     if (lowerText.includes('zip') || lowerText.includes('archive')) return '.zip';
     if (lowerText.includes('docx') || lowerText.includes('word')) return '.docx';
     if (lowerText.includes('xlsx') || lowerText.includes('excel')) return '.xlsx';
     if (lowerText.includes('pptx') || lowerText.includes('powerpoint')) return '.pptx';
+    if (lowerText.includes('.tar')) return '.tar';
     if (lowerText.includes('c source') || lowerText.includes('.c')) return '.c';
     if (lowerText.includes('header') || lowerText.includes('.h')) return '.h';
     if (lowerText.includes('python') || lowerText.includes('.py')) return '.py';
@@ -57,29 +73,23 @@
       return false;
     }
 
-    // Common Moodle resource endpoints
     if (href.includes('/mod/resource/view.php') ||
         href.includes('/pluginfile.php/') ||
-        href.includes('/mod/folder/') ||
-        href.includes('/mod/assign/') ||
         href.includes('forcedownload=1')) {
       return true;
     }
 
-    // Direct file extensions
-    if (/\.(pdf|zip|tar|gz|tgz|rar|7z|docx?|xlsx?|pptx?|odt|ods|odp|txt|c|cpp|h|py|java|sh|csv|ipynb)(?:[?#]|$)/i.test(href)) {
+    if (/\.(pdf|zip|tar(\.gz|\.bz2|\.xz)?|tgz|rar|7z|docx?|xlsx?|pptx?|odt|ods|odp|txt|c|cpp|h|py|java|sh|csv|ipynb)(?:[?#]|$)/i.test(href)) {
       return true;
     }
 
-    // Text indicating a document
     const text = anchor.textContent || '';
     if (/\b(fichier|document|télécharger|download|pdf|file)\b/i.test(text)) {
-      if (!href.includes('/user/') && !href.includes('/course/view.php') && !href.includes('/login/')) {
+      if (!href.includes('/user/') && !href.includes('/course/view.php') && !href.includes('/login/') && !href.includes('/mod/page/')) {
         return true;
       }
     }
 
-    // Presence of file icon
     const icon = anchor.querySelector('img[src*="pdf"], img[alt*="PDF"], img[alt*="Fichier"], .fa-file-pdf, .fa-file-archive, .fa-file');
     if (icon) {
       return true;
@@ -111,29 +121,108 @@
     return 'Moodle_Course';
   }
 
-  // Extract active section or tab
+  // Multi-level Section Hierarchy (e.g. "Cours / LaTeX et Git/GitLab" or "Travaux pratiques / TP5" or "Travaux dirigés")
   function getActiveSection(doc) {
-    const activeTab = doc.querySelector(
-      '.nav-tabs .active, .nav-pills .active, .tabtree .active, .onetopic .nav-link.active, button.btn.active, .section.active h3'
-    );
-    if (activeTab && activeTab.textContent.trim()) {
-      return cleanText(activeTab.textContent);
+    const sections = [];
+
+    // 1. Inspect onetopic / tabs rows
+    const tabContainers = Array.from(doc.querySelectorAll('.nav-tabs, .onetopic-tabs, .tabtree, .nav-pills'));
+    tabContainers.forEach(container => {
+      const activeEl = container.querySelector('.nav-link.active, .active > a, .active > span, .active');
+      if (activeEl) {
+        let text = cleanText(activeEl.textContent);
+        if (text && !sections.some(s => s.toLowerCase() === text.toLowerCase())) {
+          sections.push(text);
+        }
+      }
+    });
+
+    // 2. Inspect Breadcrumb items
+    const breadcrumbItems = Array.from(doc.querySelectorAll('.breadcrumb .breadcrumb-item, nav[aria-label*="Fil"] li, nav[aria-label*="Breadcrumb"] li'));
+    const breadcrumbTexts = breadcrumbItems.map(el => cleanText(el.textContent)).filter(Boolean);
+    const lastBreadcrumb = breadcrumbTexts.length > 0 ? breadcrumbTexts[breadcrumbTexts.length - 1] : '';
+
+    if (lastBreadcrumb) {
+      const courseTitle = getCourseTitle(doc);
+      const isNotCourse = lastBreadcrumb.toLowerCase() !== courseTitle.toLowerCase();
+      const isNotCategory = !/^(iti|accueil|home|courses?|mes cours)$/i.test(lastBreadcrumb);
+
+      if (isNotCourse && isNotCategory) {
+        const alreadyPresent = sections.some(s => s.toLowerCase() === lastBreadcrumb.toLowerCase());
+        if (!alreadyPresent) {
+          sections.push(lastBreadcrumb);
+        }
+      }
     }
 
-    const currentSection = doc.querySelector('.course-content .section.current .sectionname, .course-content .section .sectionname');
-    if (currentSection && currentSection.textContent.trim()) {
-      return cleanText(currentSection.textContent);
+    // 3. Fallback to active section in course content if empty
+    if (sections.length === 0) {
+      const currentSection = doc.querySelector('.course-content .section.current .sectionname, .course-content .section .sectionname');
+      if (currentSection && currentSection.textContent.trim()) {
+        sections.push(cleanText(currentSection.textContent));
+      }
     }
 
-    const breadcrumbLast = doc.querySelector('.breadcrumb-item:last-child span, .breadcrumb-item:last-child a');
-    if (breadcrumbLast && breadcrumbLast.textContent.trim()) {
-      return cleanText(breadcrumbLast.textContent);
-    }
-
-    return '';
+    return sections.length > 0 ? sections.join(' / ') : '';
   }
 
-  // Get ancestor list context (e.g. "Année 2005-2006" or "Year 2020-2021")
+  // Find sub-pages (e.g. GCC-DDD) linked from the current section
+  function findSubPageLinks(doc) {
+    const mainContent = doc.querySelector('#region-main, .course-content, #content') || doc.body;
+    const links = Array.from(mainContent.querySelectorAll('a[href]'));
+    const subPages = [];
+    const seenUrls = new Set();
+
+    links.forEach(a => {
+      const href = a.getAttribute('href') || '';
+      if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+
+      const isPage = href.includes('/mod/page/view.php');
+      const isFolder = href.includes('/mod/folder/view.php');
+      const isAssign = href.includes('/mod/assign/view.php');
+
+      const activityContainer = a.closest('.activity, .activityinstance');
+      const hasPageClass = activityContainer && (
+        activityContainer.classList.contains('page') ||
+        activityContainer.classList.contains('modtype_page') ||
+        activityContainer.classList.contains('folder') ||
+        activityContainer.classList.contains('modtype_folder')
+      );
+
+      if ((isPage || isFolder || isAssign || hasPageClass) && !seenUrls.has(href)) {
+        if (a.closest('.section-navigation, .mdl-align, .onetopic_pager, .course-pager')) {
+          return;
+        }
+
+        seenUrls.add(href);
+
+        let title = '';
+        if (activityContainer) {
+          const inst = activityContainer.querySelector('.instancename');
+          if (inst) {
+            const clone = inst.cloneNode(true);
+            clone.querySelectorAll('.accesshide').forEach(el => el.remove());
+            title = cleanText(clone.textContent);
+          }
+        }
+        if (!title) {
+          title = cleanText(a.textContent);
+        }
+        title = title.replace(/^(Page|Dossier|Folder)\s*:\s*/i, '').trim();
+
+        if (title && title.length > 1) {
+          subPages.push({
+            title: sanitizeFilename(title),
+            url: a.href || href
+          });
+        }
+      }
+    });
+
+    return subPages;
+  }
+
+  // Get ancestor list context
   function getAncestorListContext(anchor) {
     const ancestors = [];
     let parentLi = anchor.closest('li');
@@ -154,7 +243,6 @@
 
       directText = cleanText(directText);
       if (directText) {
-        directText = directText.replace(/[:\s]+$/, '');
         ancestors.unshift(directText);
       }
 
@@ -177,7 +265,7 @@
       }
       node = node.previousSibling;
     }
-    prevText = cleanText(prevText);
+    prevText = cleanText(prevText).replace(/^[,;\s]+/, '').replace(/[:,\s]+$/, '').trim();
 
     let nextText = '';
     node = anchor.nextSibling;
@@ -207,20 +295,16 @@
     }
 
     let role = '';
+    let itemLabel = '';
     const prevLower = prevText.toLowerCase();
 
     if (/\b(correction|corrigé|corriges?|solution|solutions|answers?|reponses?|réponses?)\b/i.test(prevLower)) {
       role = 'Correction';
-    } else if (/\b(sujet|énoncé|enonce|subject|problem|statement)\b/i.test(prevLower)) {
-      role = 'Subject';
     } else if (isMultiLinkContainer && containerHasCorrection) {
       role = 'Subject';
-    } else {
-      if (/^\s*\(\s*(correction|corrigé|solution)\s*\)/i.test(nextText)) {
-        role = 'Correction';
-      }
     }
 
+    // Extract item type
     let itemType = '';
     const typeRegex = /\b(Partiel|Examen|Exam|Midterm|Final|Rattrapage|Session\s*\d+|TP\s*\d*|TD\s*\d*|Lab\s*\d*|Homework|Assignment|Devoir|Projet|Project|Quiz)\b/i;
 
@@ -234,9 +318,15 @@
       }
     }
 
+    // If prevText is not just a role keyword, it is a descriptive label (e.g. "Sujet détaillé", "Jeu du snake")
+    if (prevText && !/\b(correction|corrigé|solution)\b/i.test(prevText)) {
+      itemLabel = prevText;
+    }
+
     return {
       prevText,
       nextText,
+      itemLabel,
       itemType,
       role
     };
@@ -257,7 +347,7 @@
     return null;
   }
 
-  // Main extraction function
+  // Extract documents from a given document object
   function extractDocuments(doc) {
     const courseTitle = getCourseTitle(doc);
     const activeSection = getActiveSection(doc);
@@ -280,12 +370,12 @@
       const parts = [];
       let contextPath = '';
 
-      // 1. Check for standard Moodle activity instance with explicit title
+      // 1. Standard Moodle activity instance with explicit title
       const activityName = getMoodleActivityName(anchor);
       const isActivityGeneric = !activityName || /^(fichier\s*pdf|pdf|document|file|download|télécharger|lien)$/i.test(activityName);
 
       if (activityName && !isActivityGeneric) {
-        parts.push(sanitizeFilename(activityName));
+        parts.push(sanitizeFilename(stripExtension(activityName)));
         contextPath = activityName;
       } else {
         // 2. Hierarchical list context
@@ -293,33 +383,41 @@
         ancestors.forEach(a => parts.push(sanitizeFilename(a)));
 
         const lineCtx = analyzeLineContext(anchor);
-        if (lineCtx.itemType) {
+
+        // If a descriptive line label exists (e.g. "Sujet détaillé" or "Jeu du snake"), use it
+        if (lineCtx.itemLabel) {
+          parts.push(sanitizeFilename(lineCtx.itemLabel));
+        } else if (lineCtx.itemType) {
           parts.push(sanitizeFilename(lineCtx.itemType));
         }
+
         if (lineCtx.role) {
-          parts.push(sanitizeFilename(lineCtx.role));
+          // If label already conveys the role or subject, avoid redundancy
+          if (!lineCtx.itemLabel || (!lineCtx.itemLabel.toLowerCase().includes(lineCtx.role.toLowerCase()) && lineCtx.itemType)) {
+            parts.push(sanitizeFilename(lineCtx.role));
+          }
         }
 
-        contextPath = ancestors.join(' > ') + (lineCtx.itemType ? ` > ${lineCtx.itemType}` : '') + (lineCtx.role ? ` (${lineCtx.role})` : '');
+        contextPath = ancestors.join(' > ') + (lineCtx.itemLabel || lineCtx.itemType ? ` > ${lineCtx.itemLabel || lineCtx.itemType}` : '') + (lineCtx.role ? ` (${lineCtx.role})` : '');
       }
 
       // 3. Fallback to anchor text
       if (parts.length === 0) {
         const isGeneric = /^(fichier\s*pdf|pdf|document|file|download|télécharger|lien|here|link)$/i.test(anchorRawText);
         if (anchorRawText && !isGeneric) {
-          parts.push(sanitizeFilename(anchorRawText));
+          parts.push(sanitizeFilename(stripExtension(anchorRawText)));
         }
       }
 
       // 4. Fallback to URL path segment
       if (parts.length === 0) {
         try {
-          const pathname = new URL(href, doc.baseURI).pathname;
+          const pathname = new URL(href, doc.baseURI || 'https://moodle.example.com').pathname;
           const segments = pathname.split('/').filter(Boolean);
           const lastSeg = segments[segments.length - 1] || '';
           if (lastSeg && !lastSeg.includes('.php')) {
-            const cleanSeg = decodeURIComponent(lastSeg).replace(/\.[a-zA-Z0-9]+$/, '');
-            parts.push(sanitizeFilename(cleanSeg));
+            const cleanSeg = decodeURIComponent(lastSeg);
+            parts.push(sanitizeFilename(stripExtension(cleanSeg)));
           }
         } catch (e) {
           // ignore url error
@@ -337,7 +435,6 @@
 
       let finalFilename = baseName + ext;
 
-      // Handle duplicate filenames
       if (usedFilenames.has(finalFilename)) {
         const count = usedFilenames.get(finalFilename) + 1;
         usedFilenames.set(finalFilename, count);
@@ -366,9 +463,78 @@
     };
   }
 
+  // Main extraction including asynchronous sub-pages crawling (GCC-DDD, etc.)
+  async function extractAllDocuments(doc, fetchHtmlFn) {
+    const directResults = extractDocuments(doc);
+    const allItems = [...directResults.items];
+    const usedFilenames = new Map();
+    allItems.forEach(i => usedFilenames.set(i.filename, 1));
+
+    const subPages = findSubPageLinks(doc);
+
+    if (fetchHtmlFn && subPages.length > 0) {
+      for (const sp of subPages) {
+        try {
+          const html = await fetchHtmlFn(sp.url);
+          if (!html) continue;
+
+          let subDoc;
+          if (typeof DOMParser !== 'undefined') {
+            subDoc = new DOMParser().parseFromString(html, 'text/html');
+          } else {
+            const { JSDOM } = require('jsdom');
+            subDoc = new JSDOM(html).window.document;
+          }
+
+          const subResults = extractDocuments(subDoc);
+          subResults.items.forEach(subItem => {
+            const cleanSubName = stripExtension(subItem.filename);
+            const prefixedName = sanitizeFilename(`${sp.title} - ${cleanSubName}`) + subItem.extension;
+
+            let finalName = prefixedName;
+            if (usedFilenames.has(finalName)) {
+              const count = usedFilenames.get(finalName) + 1;
+              usedFilenames.set(finalName, count);
+              finalName = `${stripExtension(prefixedName)} (${count})${subItem.extension}`;
+            } else {
+              usedFilenames.set(finalName, 1);
+            }
+
+            allItems.push({
+              id: `sub_${subItem.id}_${allItems.length}`,
+              url: subItem.url,
+              filename: finalName,
+              defaultFilename: finalName,
+              extension: subItem.extension,
+              originalText: subItem.originalText,
+              contextPath: `${directResults.activeSection || 'Section'} > ${sp.title} > ${subItem.contextPath}`,
+              selected: true,
+              fromSubPage: sp.title
+            });
+          });
+        } catch (e) {
+          console.warn(`Could not crawl sub-page ${sp.title}:`, e);
+        }
+      }
+    }
+
+    return {
+      courseTitle: directResults.courseTitle,
+      activeSection: directResults.activeSection,
+      totalFound: allItems.length,
+      items: allItems,
+      subPagesFound: subPages.map(s => s.title)
+    };
+  }
+
   return {
     extractDocuments,
+    extractAllDocuments,
+    findSubPageLinks,
+    getActiveSection,
+    getCourseTitle,
     sanitizeFilename,
+    stripExtension,
     detectExtension
   };
 });

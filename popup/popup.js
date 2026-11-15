@@ -1,9 +1,8 @@
 /**
- * popup.js - Extension UI Controller (English)
+ * popup.js - Extension UI Controller (for standalone / popout usage)
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // DOM Elements
   const courseNameEl = document.getElementById('course-name');
   const sectionNameEl = document.getElementById('section-name');
   const sectionRowEl = document.getElementById('section-row');
@@ -18,50 +17,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnDownloadFolder = document.getElementById('btn-download-folder');
   const btnDownloadChrome = document.getElementById('btn-download-chrome');
   const optSubfolderEl = document.getElementById('opt-subfolder');
-  const optAlwaysTabEl = document.getElementById('opt-always-tab');
   const progressContainerEl = document.getElementById('progress-container');
   const progressBarFillEl = document.getElementById('progress-bar-fill');
   const progressTextEl = document.getElementById('progress-text');
   const progressPercentEl = document.getElementById('progress-percent');
 
-  // Full-tab / dedicated tab mode detection
   const urlParams = new URLSearchParams(window.location.search);
-  const isFullTab = urlParams.get('tab') === '1';
-  const shouldPickFolderImmediately = urlParams.get('pickFolder') === '1';
   const forcedSourceTabId = urlParams.get('sourceTabId') ? parseInt(urlParams.get('sourceTabId'), 10) : null;
 
-  // Load preferences
-  const prefs = await chrome.storage.local.get(['optAlwaysTab', 'optSubfolder']);
-  if (prefs.optAlwaysTab) {
-    optAlwaysTabEl.checked = true;
-    if (!isFullTab) {
-      const tab = await getTargetTab();
-      chrome.tabs.create({
-        url: chrome.runtime.getURL(`popup/popup.html?tab=1&sourceTabId=${tab?.id || ''}`)
-      });
-      window.close();
-      return;
-    }
-  }
+  if (btnDetachEl) btnDetachEl.style.display = 'none';
 
-  if (prefs.optSubfolder !== undefined) {
-    optSubfolderEl.checked = prefs.optSubfolder;
-  }
-
-  optAlwaysTabEl.addEventListener('change', () => {
-    chrome.storage.local.set({ optAlwaysTab: optAlwaysTabEl.checked });
-  });
-
-  optSubfolderEl.addEventListener('change', () => {
-    chrome.storage.local.set({ optSubfolder: optSubfolderEl.checked });
-  });
-
-  if (isFullTab) {
-    document.body.classList.add('full-tab');
-    if (btnDetachEl) btnDetachEl.style.display = 'none';
-  }
-
-  // Local state
   let currentTabId = forcedSourceTabId;
   let courseData = {
     courseTitle: '',
@@ -70,64 +35,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
   let isDownloading = false;
 
-  // Detach / Expand into a full tab
-  btnDetachEl.addEventListener('click', async () => {
-    await saveTransferState();
-    chrome.tabs.create({
-      url: chrome.runtime.getURL(`popup/popup.html?tab=1&sourceTabId=${currentTabId || ''}`)
-    });
-    window.close();
-  });
-
-  // Get Moodle target tab
   async function getTargetTab() {
     if (currentTabId) {
       try {
         const tab = await chrome.tabs.get(currentTabId);
         if (tab) return tab;
-      } catch (e) {
-        // Tab closed or invalid
-      }
+      } catch (e) {}
     }
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     return tabs[0] || null;
   }
 
-  // Save state for popup-to-tab transfer
-  async function saveTransferState() {
-    await chrome.storage.local.set({
-      moodleTransferState: {
-        courseData,
-        currentTabId,
-        optSubfolder: optSubfolderEl.checked
-      }
-    });
-  }
-
-  // Initialization: check transfer state or scan active tab
-  async function initialize() {
-    if (isFullTab) {
-      const saved = await chrome.storage.local.get('moodleTransferState');
-      if (saved && saved.moodleTransferState && saved.moodleTransferState.courseData) {
-        courseData = saved.moodleTransferState.courseData;
-        currentTabId = saved.moodleTransferState.currentTabId || currentTabId;
-        optSubfolderEl.checked = saved.moodleTransferState.optSubfolder ?? true;
-
-        await chrome.storage.local.remove('moodleTransferState');
-        handleScanSuccess(courseData);
-
-        if (shouldPickFolderImmediately) {
-          btnDownloadFolder.scrollIntoView({ behavior: 'smooth' });
-          btnDownloadFolder.focus();
-        }
-        return;
-      }
-    }
-
-    initScan();
-  }
-
-  // Scan Moodle page
   async function initScan() {
     loadingStateEl.classList.remove('hidden');
     emptyStateEl.classList.add('hidden');
@@ -177,7 +95,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (p) p.textContent = msg;
   }
 
-  // Handle scanned results
   function handleScanSuccess(data) {
     loadingStateEl.classList.add('hidden');
     courseData = data;
@@ -200,7 +117,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateButtonStates();
   }
 
-  // Render file list
   function renderFileList() {
     fileListEl.innerHTML = '';
     const filterText = filterInputEl.value.trim().toLowerCase();
@@ -210,6 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return (
         item.filename.toLowerCase().includes(filterText) ||
         (item.contextPath && item.contextPath.toLowerCase().includes(filterText)) ||
+        (item.fromSubPage && item.fromSubPage.toLowerCase().includes(filterText)) ||
         (item.originalText && item.originalText.toLowerCase().includes(filterText))
       );
     });
@@ -226,7 +143,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       card.className = `file-card ${item.selected ? 'selected' : ''}`;
       card.id = `card-${item.id}`;
 
-      // Checkbox
       const chk = document.createElement('input');
       chk.type = 'checkbox';
       chk.className = 'file-checkbox';
@@ -237,13 +153,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateSelectionStats();
       });
 
-      // Details container
       const details = document.createElement('div');
       details.className = 'file-details';
 
-      // Context Tag
       const ctxRow = document.createElement('div');
       ctxRow.className = 'file-context-row';
+
+      if (item.fromSubPage) {
+        const subTag = document.createElement('span');
+        subTag.className = 'context-tag';
+        subTag.style.background = '#fef08a';
+        subTag.style.color = '#854d0e';
+        subTag.textContent = 'Page: ' + item.fromSubPage;
+        ctxRow.appendChild(subTag);
+      }
 
       if (item.contextPath) {
         const tag = document.createElement('span');
@@ -253,7 +176,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         ctxRow.appendChild(tag);
       }
 
-      // Editable file name input
       const nameInput = document.createElement('input');
       nameInput.type = 'text';
       nameInput.className = 'file-name-input';
@@ -263,7 +185,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         item.filename = e.target.value.trim();
       });
 
-      // Actions & Status
       const actionsRow = document.createElement('div');
       actionsRow.className = 'file-actions';
 
@@ -301,10 +222,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateSelectionStats();
   }
 
-  // Filters & selection toggles
-  filterInputEl.addEventListener('input', () => {
-    renderFileList();
-  });
+  filterInputEl.addEventListener('input', renderFileList);
 
   checkAllEl.addEventListener('change', () => {
     const isChecked = checkAllEl.checked;
@@ -312,9 +230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderFileList();
   });
 
-  btnRefreshEl.addEventListener('click', () => {
-    initScan();
-  });
+  btnRefreshEl.addEventListener('click', initScan);
 
   function updateSelectionStats() {
     const selectedCount = courseData.items.filter(i => i.selected).length;
@@ -338,7 +254,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnDownloadChrome.querySelector('span').textContent = `Direct Chrome Downloads (${selectedCount})`;
   }
 
-  // Fetch file Blob using session cookies
   async function fetchFileBlob(url) {
     try {
       const res = await fetch(url, { credentials: 'include', redirect: 'follow' });
@@ -350,34 +265,17 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (chrome.runtime.lastError || !resp || !resp.success) {
             reject(new Error(resp?.error || directErr.message));
           } else {
-            fetch(resp.dataUrl)
-              .then(r => r.blob())
-              .then(resolve)
-              .catch(reject);
+            fetch(resp.dataUrl).then(r => r.blob()).then(resolve).catch(reject);
           }
         });
       });
     }
   }
 
-  // =========================================================================
-  // OPTION A: File System Access API (Local Folder Picker)
-  // =========================================================================
+  // Folder picker without forcing tab
   btnDownloadFolder.addEventListener('click', async () => {
     const selectedItems = courseData.items.filter(i => i.selected);
     if (selectedItems.length === 0) return;
-
-    // Chromium popup behavior on Linux/Windows:
-    // Opening native file chooser from popup causes popup to blur and close immediately.
-    // Solution: If in popup, seamlessly transfer state to a dedicated tab where picker never closes.
-    if (!isFullTab) {
-      await saveTransferState();
-      chrome.tabs.create({
-        url: chrome.runtime.getURL(`popup/popup.html?tab=1&pickFolder=1&sourceTabId=${currentTabId || ''}`)
-      });
-      window.close();
-      return;
-    }
 
     if (!('showDirectoryPicker' in window)) {
       alert("Your browser does not support the File System Access API. Please use Direct Chrome Downloads.");
@@ -388,31 +286,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       rootDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
     } catch (err) {
-      if (err.name === 'AbortError') {
-        return; // User cancelled
-      }
+      if (err.name === 'AbortError') return;
       alert("Error accessing selected folder: " + err.message);
       return;
     }
 
-    // Subfolder handling
     let targetDirHandle = rootDirHandle;
     if (optSubfolderEl.checked) {
       const folderNameParts = [];
       if (courseData.courseTitle) folderNameParts.push(courseData.courseTitle);
       if (courseData.activeSection) folderNameParts.push(courseData.activeSection);
-      let subDirName = folderNameParts.join(' - ');
-      subDirName = MoodleScraper.sanitizeFilename(subDirName) || 'Moodle_Export';
+      let subDirName = MoodleScraper.sanitizeFilename(folderNameParts.join(' - ')) || 'Moodle_Export';
 
       try {
         targetDirHandle = await rootDirHandle.getDirectoryHandle(subDirName, { create: true });
       } catch (subErr) {
-        console.warn("Could not create subfolder, saving to root folder instead:", subErr);
         targetDirHandle = rootDirHandle;
       }
     }
 
-    // Batch download
     startBatchDownload(selectedItems, async (item) => {
       const blob = await fetchFileBlob(item.url);
       const cleanName = MoodleScraper.sanitizeFilename(item.filename) || item.defaultFilename;
@@ -423,9 +315,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // =========================================================================
-  // OPTION B: Direct Chrome Downloads (chrome.downloads API)
-  // =========================================================================
+  // Direct Chrome downloads
   btnDownloadChrome.addEventListener('click', async () => {
     const selectedItems = courseData.items.filter(i => i.selected);
     if (selectedItems.length === 0) return;
@@ -448,7 +338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           filename: fullPath
         }, (res) => {
           if (chrome.runtime.lastError || !res || !res.success) {
-            reject(new Error(res?.error || chrome.runtime.lastError?.message || 'Download error'));
+            reject(new Error(res?.error || 'Download error'));
           } else {
             resolve();
           }
@@ -457,7 +347,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // Batch download runner with live progress bar
   async function startBatchDownload(itemsToDownload, downloadFunction) {
     isDownloading = true;
     updateButtonStates();
@@ -489,7 +378,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           statusBadge.textContent = '✓ Saved';
         }
       } catch (err) {
-        console.error(`Failed for ${item.filename}:`, err);
         errors++;
         if (statusBadge) {
           statusBadge.className = 'status-badge error';
@@ -498,7 +386,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
 
-      await new Promise(r => setTimeout(r, 150));
+      await new Promise(r => setTimeout(r, 120));
     }
 
     progressBarFillEl.style.width = '100%';
@@ -513,6 +401,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Start initialization
-  initialize();
+  initScan();
 });
