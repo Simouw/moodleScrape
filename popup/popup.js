@@ -18,15 +18,45 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnDownloadFolder = document.getElementById('btn-download-folder');
   const btnDownloadChrome = document.getElementById('btn-download-chrome');
   const optSubfolderEl = document.getElementById('opt-subfolder');
+  const optAlwaysTabEl = document.getElementById('opt-always-tab');
+  const tabNoticeEl = document.getElementById('tab-notice');
   const progressContainerEl = document.getElementById('progress-container');
   const progressBarFillEl = document.getElementById('progress-bar-fill');
   const progressTextEl = document.getElementById('progress-text');
   const progressPercentEl = document.getElementById('progress-percent');
 
-  // Gestion du mode pleine page (si détaché dans un onglet)
+  // Gestion du mode pleine page / onglet dédié
   const urlParams = new URLSearchParams(window.location.search);
   const isFullTab = urlParams.get('tab') === '1';
+  const shouldPickFolderImmediately = urlParams.get('pickFolder') === '1';
   const forcedSourceTabId = urlParams.get('sourceTabId') ? parseInt(urlParams.get('sourceTabId'), 10) : null;
+
+  // Charger la préférence "Toujours ouvrir dans un onglet"
+  const prefs = await chrome.storage.local.get(['optAlwaysTab', 'optSubfolder']);
+  if (prefs.optAlwaysTab) {
+    optAlwaysTabEl.checked = true;
+    // Si on est dans le popup volatile et que la préférence est cochée, basculer immédiatement vers l'onglet
+    if (!isFullTab) {
+      const tab = await getTargetTab();
+      chrome.tabs.create({
+        url: chrome.runtime.getURL(`popup/popup.html?tab=1&sourceTabId=${tab?.id || ''}`)
+      });
+      window.close();
+      return;
+    }
+  }
+
+  if (prefs.optSubfolder !== undefined) {
+    optSubfolderEl.checked = prefs.optSubfolder;
+  }
+
+  optAlwaysTabEl.addEventListener('change', () => {
+    chrome.storage.local.set({ optAlwaysTab: optAlwaysTabEl.checked });
+  });
+
+  optSubfolderEl.addEventListener('change', () => {
+    chrome.storage.local.set({ optSubfolder: optSubfolderEl.checked });
+  });
 
   if (isFullTab) {
     document.body.classList.add('full-tab');
@@ -42,15 +72,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
   let isDownloading = false;
 
-  // 1. Bouton Détacher / Agrandir dans un onglet
+  // Bouton Détacher / Agrandir dans un onglet
   btnDetachEl.addEventListener('click', async () => {
-    const tab = await getTargetTab();
-    if (tab && tab.id) {
-      chrome.tabs.create({
-        url: chrome.runtime.getURL(`popup/popup.html?tab=1&sourceTabId=${tab.id}`)
-      });
-      window.close();
-    }
+    await saveTransferState();
+    chrome.tabs.create({
+      url: chrome.runtime.getURL(`popup/popup.html?tab=1&sourceTabId=${currentTabId || ''}`)
+    });
+    window.close();
   });
 
   // Obtenir l'onglet cible (la page Moodle)
@@ -67,7 +95,46 @@ document.addEventListener('DOMContentLoaded', async () => {
     return tabs[0] || null;
   }
 
-  // 2. Initialisation : injection & scan de la page Moodle
+  // Sauvegarder l'état actuel pour le transfert entre popup et onglet
+  async function saveTransferState() {
+    await chrome.storage.local.set({
+      moodleTransferState: {
+        courseData,
+        currentTabId,
+        optSubfolder: optSubfolderEl.checked
+      }
+    });
+  }
+
+  // Initialisation : vérifier s'il y a un état transféré ou scanner la page
+  async function initialize() {
+    // Si on est en mode onglet et qu'on vient d'un transfert depuis le popup
+    if (isFullTab) {
+      const saved = await chrome.storage.local.get('moodleTransferState');
+      if (saved && saved.moodleTransferState && saved.moodleTransferState.courseData) {
+        courseData = saved.moodleTransferState.courseData;
+        currentTabId = saved.moodleTransferState.currentTabId || currentTabId;
+        optSubfolderEl.checked = saved.moodleTransferState.optSubfolder ?? true;
+
+        // Nettoyer l'état transféré
+        await chrome.storage.local.remove('moodleTransferState');
+
+        handleScanSuccess(courseData);
+
+        if (shouldPickFolderImmediately) {
+          tabNoticeEl.classList.remove('hidden');
+          btnDownloadFolder.scrollIntoView({ behavior: 'smooth' });
+          btnDownloadFolder.focus();
+        }
+        return;
+      }
+    }
+
+    // Sinon scan standard
+    initScan();
+  }
+
+  // Scan de la page Moodle
   async function initScan() {
     loadingStateEl.classList.remove('hidden');
     emptyStateEl.classList.add('hidden');
@@ -75,27 +142,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const tab = await getTargetTab();
     if (!tab || !tab.id) {
-      showError("Impossible d'accéder à l'onglet actif.");
+      showError("Impossible d'accéder à la page Moodle. Vérifiez que l'onglet du cours est ouvert.");
       return;
     }
     currentTabId = tab.id;
 
     try {
-      // Tenter d'envoyer un message au content_script
       chrome.tabs.sendMessage(currentTabId, { action: 'scanDocuments' }, async (response) => {
         if (chrome.runtime.lastError || !response || !response.success) {
-          // Si le script n'est pas encore injecté, on l'injecte dynamiquement
           try {
             await chrome.scripting.executeScript({
               target: { tabId: currentTabId },
               files: ['src/scraper.js', 'src/content.js']
             });
 
-            // Réessayer après injection
             setTimeout(() => {
               chrome.tabs.sendMessage(currentTabId, { action: 'scanDocuments' }, (resp2) => {
                 if (chrome.runtime.lastError || !resp2 || !resp2.success) {
-                  showError("Impossible d'analyser la page. Vérifiez qu'il s'agit bien d'une page Moodle.");
+                  showError("Impossible d'analyser la page. Vérifiez qu'il s'agit bien d'une page de cours Moodle.");
                 } else {
                   handleScanSuccess(resp2.data);
                 }
@@ -120,12 +184,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (p) p.textContent = msg;
   }
 
-  // 3. Traitement des résultats du scan
+  // Traitement des résultats du scan
   function handleScanSuccess(data) {
     loadingStateEl.classList.add('hidden');
     courseData = data;
 
-    // Affichage des métadonnées
     courseNameEl.textContent = data.courseTitle || 'Cours Moodle';
     if (data.activeSection) {
       sectionNameEl.textContent = data.activeSection;
@@ -144,7 +207,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateButtonStates();
   }
 
-  // 4. Rendu de la liste des fichiers
+  // Rendu de la liste des fichiers
   function renderFileList() {
     fileListEl.innerHTML = '';
     const filterText = filterInputEl.value.trim().toLowerCase();
@@ -202,7 +265,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       nameInput.type = 'text';
       nameInput.className = 'file-name-input';
       nameInput.value = item.filename;
-      nameInput.title = "Nom du fichier (modifiable)";
+      nameInput.title = "Nom du fichier (modifiable directement)";
       nameInput.addEventListener('input', (e) => {
         item.filename = e.target.value.trim();
       });
@@ -220,7 +283,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       linkBtn.href = item.url;
       linkBtn.target = '_blank';
       linkBtn.className = 'link-btn';
-      linkBtn.title = "Ouvrir le lien original dans un nouvel onglet";
+      linkBtn.title = "Ouvrir le lien original";
       linkBtn.innerHTML = `
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
@@ -245,7 +308,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateSelectionStats();
   }
 
-  // 5. Gestion des filtres et sélection globale
+  // Filtres et sélection globale
   filterInputEl.addEventListener('input', () => {
     renderFileList();
   });
@@ -279,24 +342,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnDownloadChrome.disabled = disabled;
 
     btnDownloadFolder.querySelector('span').textContent = `📁 Choisir un dossier & Télécharger (${selectedCount})`;
-    btnDownloadChrome.querySelector('span').textContent = `Téléchargements Chrome (${selectedCount})`;
+    btnDownloadChrome.querySelector('span').textContent = `Téléchargements Chrome direct (${selectedCount})`;
   }
 
-  // 6. Récupération d'un fichier (Blob) avec cookies de session
+  // Récupération d'un fichier (Blob) avec cookies de session
   async function fetchFileBlob(url) {
     try {
-      // 1ère tentative : fetch direct depuis l'extension
       const res = await fetch(url, { credentials: 'include', redirect: 'follow' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.blob();
     } catch (directErr) {
-      // 2ème tentative de repli : fetch via le content_script dans la page
       return new Promise((resolve, reject) => {
         chrome.tabs.sendMessage(currentTabId, { action: 'fetchBlob', url }, (resp) => {
           if (chrome.runtime.lastError || !resp || !resp.success) {
             reject(new Error(resp?.error || directErr.message));
           } else {
-            // Reconvertir DataURL en Blob
             fetch(resp.dataUrl)
               .then(r => r.blob())
               .then(resolve)
@@ -307,13 +367,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // 7. Option A : Téléchargement direct avec File System Access API
+  // =========================================================================
+  // OPTION A : Téléchargement avec choix de dossier (File System Access API)
+  // =========================================================================
   btnDownloadFolder.addEventListener('click', async () => {
     const selectedItems = courseData.items.filter(i => i.selected);
     if (selectedItems.length === 0) return;
 
+    // RÈGLE CHROMIUM IMPORTANTE :
+    // Sous Linux et Windows, ouvrir le sélecteur de fichiers OS depuis une petite bulle popup
+    // fait perdre le focus à la bulle, ce qui provoque la fermeture immédiate de la popup par Chrome.
+    // Solution : Si on est dans la popup, on transfère l'état et on ouvre l'onglet dédié où la boîte ne se fermera JAMAIS.
+    if (!isFullTab) {
+      await saveTransferState();
+      chrome.tabs.create({
+        url: chrome.runtime.getURL(`popup/popup.html?tab=1&pickFolder=1&sourceTabId=${currentTabId || ''}`)
+      });
+      window.close();
+      return;
+    }
+
+    // Nous sommes dans un onglet dédié sécurisé : l'OS picker peut s'ouvrir sereinement
+    tabNoticeEl.classList.add('hidden');
+
     if (!('showDirectoryPicker' in window)) {
-      alert("Votre navigateur ne supporte pas l'API File System Access. Veuillez utiliser le mode Téléchargements Chrome.");
+      alert("Votre navigateur ne supporte pas l'API File System Access. Utilisez le bouton Téléchargements Chrome.");
       return;
     }
 
@@ -322,10 +400,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       rootDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
     } catch (err) {
       if (err.name === 'AbortError') {
-        // Annulation par l'utilisateur
+        // Choix annulé par l'utilisateur
         return;
       }
-      alert("Impossible d'accéder au dossier sélectionné : " + err.message);
+      alert("Erreur d'accès au dossier : " + err.message);
       return;
     }
 
@@ -341,17 +419,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         targetDirHandle = await rootDirHandle.getDirectoryHandle(subDirName, { create: true });
       } catch (subErr) {
-        console.warn("Échec de création du sous-dossier, enregistrement à la racine :", subErr);
+        console.warn("Sous-dossier non créé, écriture à la racine :", subErr);
         targetDirHandle = rootDirHandle;
       }
     }
 
-    // Lancement du téléchargement séquentiel / contrôlé
+    // Téléchargement et écriture directe dans le dossier
     startBatchDownload(selectedItems, async (item) => {
-      // Télécharger le Blob
       const blob = await fetchFileBlob(item.url);
-
-      // Créer le fichier dans le dossier cible
       const cleanName = MoodleScraper.sanitizeFilename(item.filename) || item.defaultFilename;
       const fileHandle = await targetDirHandle.getFileHandle(cleanName, { create: true });
       const writable = await fileHandle.createWritable();
@@ -360,7 +435,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // 8. Option B : Téléchargement via chrome.downloads
+  // =========================================================================
+  // OPTION B : Téléchargement direct sans boîte de dialogue (chrome.downloads)
+  // =========================================================================
   btnDownloadChrome.addEventListener('click', async () => {
     const selectedItems = courseData.items.filter(i => i.selected);
     if (selectedItems.length === 0) return;
@@ -392,7 +469,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // 9. Gestionnaire d'exécution par lot avec barre de progression
+  // Gestionnaire de téléchargement par lot avec barre de progression
   async function startBatchDownload(itemsToDownload, downloadFunction) {
     isDownloading = true;
     updateButtonStates();
@@ -406,7 +483,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       const item = itemsToDownload[i];
       const statusBadge = document.getElementById(`status-${item.id}`);
 
-      // Mise à jour de l'UI
       if (statusBadge) {
         statusBadge.className = 'status-badge downloading';
         statusBadge.textContent = 'Téléchargement...';
@@ -434,11 +510,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
 
-      // Petite pause pour ne pas surcharger le serveur Moodle
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 150));
     }
 
-    // Fin
     progressBarFillEl.style.width = '100%';
     progressPercentEl.textContent = '100%';
     isDownloading = false;
@@ -451,6 +525,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Démarrer le scan dès l'ouverture
-  initScan();
+  // Démarrage
+  initialize();
 });

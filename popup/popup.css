@@ -33,7 +33,7 @@ body {
   color: var(--text-primary);
   font-size: 13px;
   line-height: 1.4;
-  width: 540px;
+  width: 550px;
   min-height: 580px;
   max-height: 600px;
   overflow: hidden;
@@ -46,12 +46,16 @@ body.full-tab {
   width: 100vw;
   height: 100vh;
   max-height: none;
+  background-color: #f1f5f9;
 }
 
 body.full-tab .app-container {
-  max-width: 900px;
-  margin: 0 auto;
-  box-shadow: 0 0 20px rgba(0,0,0,0.06);
+  max-width: 960px;
+  margin: 20px auto;
+  height: calc(100vh - 40px);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .app-container {
@@ -101,22 +105,48 @@ body.full-tab .app-container {
 }
 
 .icon-btn {
-  background: transparent;
+  background: #f8fafc;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 5px;
+  padding: 6px 10px;
   cursor: pointer;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
   transition: all 0.15s ease;
 }
 
 .icon-btn:hover {
-  background-color: #f3f4f6;
-  color: var(--text-primary);
-  border-color: #d1d5db;
+  background-color: #f1f5f9;
+  color: var(--primary-color);
+  border-color: #cbd5e1;
+}
+
+/* Bannière d'aide / Notice */
+.tab-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background-color: #eff6ff;
+  border-bottom: 1px solid #bfdbfe;
+  color: #1e40af;
+  font-size: 12px;
+  line-height: 1.4;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tab-notice div {
+  display: flex;
+  flex-direction: column;
 }
 
 /* Métadonnées du cours */
@@ -196,7 +226,7 @@ body.full-tab .app-container {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   outline: none;
-  width: 170px;
+  width: 180px;
   transition: all 0.15s ease;
 }
 
@@ -205,7 +235,7 @@ body.full-tab .app-container {
   box-shadow: 0 0 0 2px rgba(242, 114, 23, 0.15);
 }
 
-/* Checkbox personnalisée */
+/* Checkbox */
 .checkbox-container {
   display: flex;
   align-items: center;
@@ -229,7 +259,7 @@ body.full-tab .app-container {
   flex: 1;
   overflow-y: auto;
   padding: 10px 16px;
-  min-height: 250px;
+  min-height: 230px;
 }
 
 .state-message {
@@ -322,27 +352,10 @@ body.full-tab .app-container {
   color: #334155;
   padding: 1px 6px;
   border-radius: 4px;
-  max-width: 260px;
+  max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.role-badge {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 4px;
-}
-
-.role-badge.correction {
-  background-color: #fef08a;
-  color: #854d0e;
-}
-
-.role-badge.sujet {
-  background-color: #e0e7ff;
-  color: #3730a3;
 }
 
 .file-name-input {
@@ -353,7 +366,7 @@ body.full-tab .app-container {
   color: var(--text-primary);
   border: 1px solid #d1d5db;
   border-radius: 4px;
-  padding: 4px 6px;
+  padding: 5px 8px;
   background-color: #ffffff;
   transition: all 0.15s ease;
 }
@@ -367,8 +380,8 @@ body.full-tab .app-container {
 .file-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-top: 3px;
+  gap: 6px;
+  margin-top: 2px;
 }
 
 .status-badge {
@@ -419,9 +432,12 @@ body.full-tab .app-container {
 
 /* Options */
 .options-box {
-  padding: 6px 16px;
+  padding: 8px 16px;
   background-color: #f8fafc;
   border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .toggle-option {
