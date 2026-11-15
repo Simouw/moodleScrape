@@ -1,95 +1,68 @@
-# 🎓 Moodle Smart Downloader
+# Moodle Smart Downloader
 
-> A high-performance browser extension for intelligent detection, multi-level section hierarchy extraction, sub-page crawling, contextual renaming, and in-page direct downloads on Moodle.
+Browser extension for bulk downloading and context-aware renaming of documents on Moodle.
 
----
+## Features
 
-## 🌟 Key Features
+- **In-Page Drawer:** Toggles directly on the active Moodle tab. No new browser tab required.
+- **Dedicated Tab View:** An "Expand to New Tab" button in the header opens a full-screen view.
+- **Multi-Level Section Detection:** Accurately extracts section and sub-topic hierarchy across tabs, sub-tabs, and breadcrumbs (e.g. `Travaux pratiques / TP5`, `Cours / LaTeX et Git/GitLab`, `Travaux dirigés`).
+- **Sub-Page Crawling:** Discovers and fetches embedded documents inside linked Moodle activity sub-pages (such as `/mod/page/` or `/mod/folder/`, e.g. `GCC-DDD`), prefixing downloaded files with the sub-page title.
+- **Contextual Renaming:** Replaces generic labels (such as "Fichier PDF") with structured filenames based on ancestor headers, academic years, and roles (Subject vs. Correction).
+- **Local Directory Selection:** Uses the File System Access API (`showDirectoryPicker`) to write files directly to any selected folder on the filesystem.
+- **Session Handling:** Relies on active session cookies via authenticated fetch calls (`credentials: 'include'`).
+- **Inline Editing & Search:** Edit suggested filenames in place and filter files by keyword before downloading.
 
-* **🖥️ Seamless In-Page Drawer (No New Tab Required):**
-  Click the toolbar icon on any Moodle course page to toggle an elegant in-page drawer. Clicking **"Choose Folder & Download"** opens your native OS folder chooser directly over the Moodle tab—**zero new browser tabs are opened, and the window never closes unexpectedly!**
-* **📂 Multi-Level Section & Tab Hierarchy:**
-  Properly resolves full section paths across tabs, sub-tabs, and breadcrumbs:
-  * `Cours / LaTeX et Git/GitLab`
-  * `Travaux pratiques / TP5`
-  * `Travaux dirigés`
-* **🕸️ Automatic Sub-Page Crawling (e.g. GCC-DDD):**
-  When a section links to Moodle activity sub-pages (such as `/mod/page/`, `/mod/folder/`, or assignments like `GCC-DDD`), the extension automatically fetches and extracts the embedded files (PDFs, `.tar.gz`, `.zip`, etc.) inside them and prefixes their names cleanly (e.g. `GCC-DDD - Sujet détaillé.pdf`, `GCC-DDD - Jeu du snake.tar.gz`).
-* **🧠 Smart Contextual Renaming:**
-  Transforms generic labels like *"Fichier PDF"* into descriptive, structured filenames based on ancestor headings, exam years, and subject vs. correction roles.
-* **📁 Native Local Folder Selection (File System Access API):**
-  Pick any folder on your machine and stream files directly into it.
-* **✏️ Inline Renaming & Filtering:**
-  Every file name is fully editable directly inside the list before downloading. Filter files in real time (e.g. `2015`, `TP1`, `Exam`).
-* **🔐 Zero-Credential Session Handling:**
-  Runs within your active authenticated session cookies using `credentials: 'include'`.
-
----
-
-## 📦 Installation Guide
+## Installation
 
 ### Chrome / Brave / Edge / Chromium
 
-1. Open your browser and navigate to:
-   * **Chrome / Brave:** `chrome://extensions/`
-   * **Edge:** `edge://extensions/`
-2. Enable **Developer Mode** (toggle in the top-right corner).
-3. Click **"Load unpacked"** (or *Charger l'extension non empaquetée*).
-4. Select the project directory:
+1. Open `chrome://extensions/` (or `edge://extensions/`).
+2. Enable **Developer Mode** in the top-right corner.
+3. Click **Load unpacked** and select the project directory:
    ```bash
    /home/cmo/code/moodleScrape
    ```
-5. Pin **Moodle Smart Downloader** to your extensions bar!
+4. Pin the extension to your toolbar.
 
----
+## Usage
 
-## 🛠️ Usage Walkthrough
+1. Open a Moodle course section where you are logged in.
+2. Click the extension icon in the toolbar to open the in-page drawer.
+3. Adjust file selections or edit filenames directly if needed.
+4. Click **Choose Folder & Download** to select the destination folder and save the files.
 
-1. Go to any Moodle course section where you are logged in.
-2. Click the extension icon in your browser toolbar:
-   * The drawer smoothly slides in right on the Moodle page.
-   * It scans the active section, discovers sub-tabs, and crawls linked sub-pages (e.g. `GCC-DDD`).
-3. Customize file selections or tweak any filename if needed.
-4. Click **"Choose Folder & Download"**:
-   * Pick your target folder in your OS file dialog.
-   * Files download with real-time progress indicators right on your screen without leaving the page!
-
----
-
-## 📂 Project Architecture
+## Project Structure
 
 ```
 moodleScrape/
 ├── manifest.json            # Manifest V3 extension configuration
-├── icons/                   # High-res extension icons (16, 32, 48, 128px)
+├── icons/                   # Extension icons (16, 32, 48, 128px)
 ├── src/
-│   ├── scraper.js           # DOM hierarchy, multi-level tabs & sub-page crawler
-│   ├── content.js           # In-page slide-out drawer (Shadow DOM) & page bridge
-│   └── background.js        # Action click handler & Chrome downloads fallback
+│   ├── scraper.js           # DOM parser, hierarchy resolver, and sub-page crawler
+│   ├── content.js           # In-page drawer component (Shadow DOM)
+│   └── background.js        # Action click and download fallback handlers
 ├── popup/
-│   ├── popup.html           # Standalone popup interface (fallback)
-│   ├── popup.css            # Extension styling
-│   └── popup.js             # Standalone UI controller
+│   ├── popup.html           # Full-page dedicated tab interface
+│   ├── popup.css            # Styles
+│   └── popup.js             # Controller for dedicated tab view
 ├── test/
-│   ├── test_scraper.js      # Unit tests for exam archive pages
-│   ├── test_other_formats.js# Unit tests for standard activity items
-│   └── test_hierarchy.js    # Unit tests for multi-level tabs & sub-page crawling
+│   ├── test_scraper.js      # Unit tests for exam archives
+│   ├── test_other_formats.js# Unit tests for standard resources
+│   └── test_hierarchy.js    # Unit tests for multi-level tabs and sub-pages
 └── README.md
 ```
 
----
+## Testing
 
-## 🧪 Running Automated Tests
+Run unit tests using Node.js:
 
-Run the full test suite with Node.js:
 ```bash
 node test/test_scraper.js
 node test/test_other_formats.js
 node test/test_hierarchy.js
 ```
 
----
+## License
 
-## 📄 License
-
-MIT License.
+MIT
