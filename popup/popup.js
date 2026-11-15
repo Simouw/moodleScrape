@@ -1,5 +1,5 @@
 /**
- * popup.js - Extension UI Controller (for standalone / popout usage)
+ * popup.js - Extension UI Controller (for dedicated full-tab usage)
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -44,6 +44,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     return tabs[0] || null;
+  }
+
+  async function initialize() {
+    // Check if state was transferred from in-page drawer
+    const saved = await chrome.storage.local.get('moodleTransferState');
+    if (saved && saved.moodleTransferState && saved.moodleTransferState.courseData) {
+      courseData = saved.moodleTransferState.courseData;
+      optSubfolderEl.checked = saved.moodleTransferState.optSubfolder ?? true;
+      await chrome.storage.local.remove('moodleTransferState');
+      handleScanSuccess(courseData);
+      return;
+    }
+
+    initScan();
   }
 
   async function initScan() {
@@ -272,7 +286,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Folder picker without forcing tab
+  // Folder picker
   btnDownloadFolder.addEventListener('click', async () => {
     const selectedItems = courseData.items.filter(i => i.selected);
     if (selectedItems.length === 0) return;
@@ -401,5 +415,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  initScan();
+  initialize();
 });

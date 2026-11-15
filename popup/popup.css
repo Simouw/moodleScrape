@@ -1,24 +1,22 @@
-/* popup.css - Clean, modern styles for Moodle Smart Downloader */
+/* popup.css - Modern, spacious, high-readability styles */
 
 :root {
-  --primary-color: #f27217;       /* Moodle Orange */
+  --primary-color: #f27217;
   --primary-hover: #da600e;
   --primary-light: #fff3eb;
-  --secondary-color: #2b3a4a;     /* Deep Navy Blue */
+  --secondary-color: #2b3a4a;
   --accent-blue: #0070f3;
   --success-color: #10b981;
   --error-color: #ef4444;
-  --bg-color: #f9fafb;
+  --bg-color: #f8fafc;
   --surface-color: #ffffff;
   --border-color: #e5e7eb;
   --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-muted: #9ca3af;
+  --text-secondary: #374151;
+  --text-muted: #6b7280;
   --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --radius-md: 8px;
+  --radius-lg: 12px;
 }
 
 * {
@@ -31,11 +29,11 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background-color: var(--bg-color);
   color: var(--text-primary);
-  font-size: 13px;
-  line-height: 1.4;
-  width: 550px;
+  font-size: 14px;
+  line-height: 1.45;
+  width: 600px;
   min-height: 580px;
-  max-height: 600px;
+  max-height: 640px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -50,9 +48,9 @@ body.full-tab {
 }
 
 body.full-tab .app-container {
-  max-width: 960px;
-  margin: 20px auto;
-  height: calc(100vh - 40px);
+  max-width: 1000px;
+  margin: 24px auto;
+  height: calc(100vh - 48px);
   border-radius: var(--radius-lg);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--border-color);
@@ -72,7 +70,7 @@ body.full-tab .app-container {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 16px 20px;
   background-color: var(--surface-color);
   border-bottom: 1px solid var(--border-color);
 }
@@ -80,24 +78,24 @@ body.full-tab .app-container {
 .header-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .header-brand .logo {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-sm);
 }
 
 .header-titles h1 {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
 .version-tag {
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   font-weight: 600;
   color: var(--primary-color);
@@ -114,7 +112,7 @@ body.full-tab .app-container {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   transition: all 0.15s ease;
 }
@@ -127,30 +125,31 @@ body.full-tab .app-container {
 
 /* Course metadata */
 .course-meta-box {
-  padding: 10px 16px;
+  padding: 12px 20px;
   background-color: #f8fafc;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .meta-row {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 10px;
 }
 
 .meta-label {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  min-width: 50px;
+  min-width: 65px;
+  letter-spacing: 0.3px;
 }
 
 .meta-value {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
@@ -159,17 +158,17 @@ body.full-tab .app-container {
 }
 
 .meta-badge {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #1e40af;
   background-color: #dbeafe;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 12px;
   display: inline-block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 400px;
+  max-width: 480px;
 }
 
 /* Toolbar */
@@ -177,7 +176,7 @@ body.full-tab .app-container {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 10px 20px;
   background-color: #fafafa;
   border-bottom: 1px solid var(--border-color);
   gap: 12px;
@@ -197,12 +196,12 @@ body.full-tab .app-container {
 }
 
 .search-input {
-  padding: 5px 10px;
-  font-size: 12px;
+  padding: 6px 12px;
+  font-size: 13px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   outline: none;
-  width: 180px;
+  width: 190px;
   transition: all 0.15s ease;
 }
 
@@ -216,7 +215,7 @@ body.full-tab .app-container {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
@@ -225,8 +224,8 @@ body.full-tab .app-container {
 
 .checkbox-container input {
   cursor: pointer;
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
   accent-color: var(--primary-color);
 }
 
@@ -234,8 +233,8 @@ body.full-tab .app-container {
 .file-list-container {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 16px;
-  min-height: 230px;
+  padding: 14px 20px;
+  min-height: 240px;
 }
 
 .state-message {
@@ -247,16 +246,12 @@ body.full-tab .app-container {
   padding: 40px 20px;
   color: var(--text-secondary);
   gap: 12px;
-}
-
-.state-sub {
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: 14px;
 }
 
 .spinner {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border: 3px solid rgba(242, 114, 23, 0.2);
   border-top-color: var(--primary-color);
   border-radius: 50%;
@@ -275,17 +270,17 @@ body.full-tab .app-container {
 .file-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .file-card {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 8px 10px;
+  gap: 12px;
+  padding: 10px 12px;
   background-color: #ffffff;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
@@ -302,8 +297,8 @@ body.full-tab .app-container {
 .file-checkbox {
   margin-top: 5px;
   cursor: pointer;
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
   accent-color: var(--primary-color);
 }
 
@@ -311,7 +306,7 @@ body.full-tab .app-container {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -322,13 +317,13 @@ body.full-tab .app-container {
 }
 
 .context-tag {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   background-color: #e2e8f0;
   color: #334155;
-  padding: 1px 6px;
+  padding: 2px 8px;
   border-radius: 4px;
-  max-width: 320px;
+  max-width: 400px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -336,13 +331,13 @@ body.full-tab .app-container {
 
 .file-name-input {
   width: 100%;
-  font-size: 12px;
+  font-size: 13px;
   font-family: inherit;
   font-weight: 500;
   color: var(--text-primary);
   border: 1px solid #d1d5db;
-  border-radius: 4px;
-  padding: 5px 8px;
+  border-radius: 6px;
+  padding: 6px 10px;
   background-color: #ffffff;
   transition: all 0.15s ease;
 }
@@ -350,77 +345,50 @@ body.full-tab .app-container {
 .file-name-input:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(242, 114, 23, 0.2);
+  box-shadow: 0 0 0 2px rgba(242, 114, 23, 0.15);
 }
 
 .file-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-top: 2px;
 }
 
 .status-badge {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 2px 6px;
+  padding: 2px 8px;
   border-radius: 4px;
   white-space: nowrap;
 }
 
-.status-badge.ready {
-  color: var(--text-muted);
-}
-
-.status-badge.downloading {
-  color: #d97706;
-  background-color: #fef3c7;
-  animation: pulse 1s infinite;
-}
-
-.status-badge.success {
-  color: #065f46;
-  background-color: #d1fae5;
-}
-
-.status-badge.error {
-  color: #991b1b;
-  background-color: #fee2e2;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
+.status-badge.ready { color: var(--text-muted); }
+.status-badge.downloading { color: #d97706; background-color: #fef3c7; }
+.status-badge.success { color: #065f46; background-color: #d1fae5; }
+.status-badge.error { color: #991b1b; background-color: #fee2e2; }
 
 .link-btn {
   color: var(--text-muted);
-  padding: 2px;
-  border-radius: 3px;
+  font-size: 12px;
   display: inline-flex;
   align-items: center;
   text-decoration: none;
 }
-
-.link-btn:hover {
-  color: var(--accent-blue);
-}
+.link-btn:hover { color: var(--accent-blue); }
 
 /* Options */
 .options-box {
-  padding: 8px 16px;
+  padding: 10px 20px;
   background-color: #f8fafc;
   border-top: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
 
 .toggle-option {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   cursor: pointer;
   user-select: none;
@@ -428,20 +396,22 @@ body.full-tab .app-container {
 
 .toggle-option input {
   accent-color: var(--primary-color);
+  width: 16px;
+  height: 16px;
 }
 
-/* Progress bar */
+/* Progress */
 .progress-container {
-  padding: 8px 16px;
+  padding: 10px 20px;
   background-color: #fffaf0;
   border-top: 1px solid #fed7aa;
 }
 
 .progress-bar-bg {
   width: 100%;
-  height: 6px;
+  height: 7px;
   background-color: #ffedd5;
-  border-radius: 3px;
+  border-radius: 4px;
   overflow: hidden;
 }
 
@@ -454,18 +424,18 @@ body.full-tab .app-container {
 .progress-info {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 12px;
   color: #9a3412;
-  margin-top: 4px;
+  margin-top: 5px;
   font-weight: 500;
 }
 
-/* Footer / Actions */
+/* Footer */
 .app-footer {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 16px;
+  gap: 8px;
+  padding: 14px 20px;
   background-color: var(--surface-color);
   border-top: 1px solid var(--border-color);
 }
@@ -475,39 +445,17 @@ body.full-tab .app-container {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 9px 14px;
-  font-size: 13px;
+  padding: 11px 18px;
+  font-size: 14px;
   font-weight: 600;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background-color: var(--primary-color);
-  color: #ffffff;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--primary-hover);
-  box-shadow: 0 2px 4px rgba(242, 114, 23, 0.3);
-}
-
-.btn-secondary {
-  background-color: #f3f4f6;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-  font-size: 11px;
-  padding: 6px 12px;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: #e5e7eb;
-  color: var(--text-primary);
-}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background-color: var(--primary-color); color: #ffffff; }
+.btn-primary:hover:not(:disabled) { background-color: var(--primary-hover); box-shadow: 0 2px 6px rgba(242, 114, 23, 0.3); }
+.btn-secondary { background-color: #f3f4f6; color: var(--text-secondary); border: 1px solid var(--border-color); font-size: 12px; padding: 8px 14px; }
+.btn-secondary:hover:not(:disabled) { background-color: #e5e7eb; color: var(--text-primary); }

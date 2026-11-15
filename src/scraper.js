@@ -121,13 +121,20 @@
     return 'Moodle_Course';
   }
 
-  // Multi-level Section Hierarchy (e.g. "Cours / LaTeX et Git/GitLab" or "Travaux pratiques / TP5" or "Travaux dirigés")
+  // Multi-level Section Hierarchy
+  // Ignores Moodle 4's primary navbar tab ("Cours | Participants | Notes")
   function getActiveSection(doc) {
     const sections = [];
 
-    // 1. Inspect onetopic / tabs rows
+    // 1. Inspect onetopic / tabs rows, ignoring the secondary navigation menu
     const tabContainers = Array.from(doc.querySelectorAll('.nav-tabs, .onetopic-tabs, .tabtree, .nav-pills'));
     tabContainers.forEach(container => {
+      // Exclude secondary navbar tabs (Cours / Participants / Notes)
+      if (container.closest('.secondary-navigation, [data-region="moremenu"], .moremenu, header, #page-header, nav.moremenu')) {
+        return;
+      }
+
+      // Look for the active tab in this row
       const activeEl = container.querySelector('.nav-link.active, .active > a, .active > span, .active');
       if (activeEl) {
         let text = cleanText(activeEl.textContent);
@@ -318,7 +325,6 @@
       }
     }
 
-    // If prevText is not just a role keyword, it is a descriptive label (e.g. "Sujet détaillé", "Jeu du snake")
     if (prevText && !/\b(correction|corrigé|solution)\b/i.test(prevText)) {
       itemLabel = prevText;
     }
@@ -384,7 +390,6 @@
 
         const lineCtx = analyzeLineContext(anchor);
 
-        // If a descriptive line label exists (e.g. "Sujet détaillé" or "Jeu du snake"), use it
         if (lineCtx.itemLabel) {
           parts.push(sanitizeFilename(lineCtx.itemLabel));
         } else if (lineCtx.itemType) {
@@ -392,7 +397,6 @@
         }
 
         if (lineCtx.role) {
-          // If label already conveys the role or subject, avoid redundancy
           if (!lineCtx.itemLabel || (!lineCtx.itemLabel.toLowerCase().includes(lineCtx.role.toLowerCase()) && lineCtx.itemType)) {
             parts.push(sanitizeFilename(lineCtx.role));
           }

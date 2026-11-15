@@ -1,26 +1,24 @@
 /**
  * background.js - Manifest V3 Service Worker
- * Manages action clicks to toggle in-page drawer and handles chrome.downloads fallback.
+ * Manages action clicks to toggle in-page drawer, opens dedicated tab, and handles chrome.downloads.
  */
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log('[MoodleSmartDownloader] Extension installed.');
 });
 
-// Click on the toolbar action icon toggles the in-page drawer directly on Moodle!
+// Action click toggles the in-page drawer directly on Moodle
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab || !tab.id || !tab.url) return;
 
-  // Avoid injecting on chrome:// or restricted pages
   if (tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:')) {
-    chrome.tabs.create({ url: chrome.runtime.getURL('popup/popup.html') });
+    chrome.tabs.create({ url: chrome.runtime.getURL('popup/popup.html?tab=1') });
     return;
   }
 
   try {
     chrome.tabs.sendMessage(tab.id, { action: 'toggleDrawer' }, async (response) => {
       if (chrome.runtime.lastError || !response) {
-        // Content scripts not yet present; inject dynamically
         try {
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
@@ -30,8 +28,7 @@ chrome.action.onClicked.addListener(async (tab) => {
             chrome.tabs.sendMessage(tab.id, { action: 'toggleDrawer' });
           }, 120);
         } catch (injectErr) {
-          console.warn('[MoodleSmartDownloader] Could not inject content script:', injectErr);
-          chrome.tabs.create({ url: chrome.runtime.getURL(`popup/popup.html?sourceTabId=${tab.id}`) });
+          chrome.tabs.create({ url: chrome.runtime.getURL(`popup/popup.html?tab=1&sourceTabId=${tab.id}`) });
         }
       }
     });
@@ -40,8 +37,17 @@ chrome.action.onClicked.addListener(async (tab) => {
   }
 });
 
-// Chrome downloads handler
+// Handle messages from content script or popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'openDedicatedTab') {
+    const sourceTabId = sender.tab ? sender.tab.id : null;
+    chrome.tabs.create({
+      url: chrome.runtime.getURL(`popup/popup.html?tab=1&sourceTabId=${sourceTabId || ''}`)
+    });
+    sendResponse({ success: true });
+    return true;
+  }
+
   if (request.action === 'downloadViaChrome') {
     chrome.downloads.download({
       url: request.url,
